@@ -1,0 +1,9 @@
+numpy
+tensorflow
+tensorflow-addons
+tensorflow-hub
+sentence-transformers
+psutil
+scikit-learn
+
+# pip install 'keras<3.0.0' mediapipe-model-maker

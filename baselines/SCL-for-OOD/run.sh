@@ -1,0 +1,3 @@
+export CUDA_VISIBLE_DEVICES='1'
+python train.py --dataset banking --proportion 25 --mode both --setting gda lof msp --experiment_No vallian --ind_pre_epoches 20 --supcont_pre_epoches 20 --norm_coef 0.1 --cuda #without supervised contrastive pre-training
+python train.py --dataset banking --proportion 25 --mode both --setting gda lof msp --experiment_No vallian --ind_pre_epoches 20 --supcont_pre_epoches 20 --norm_coef 0.1 --sup_cont --cuda #with supervised contrastive pre-training
