@@ -21,3 +21,6 @@ pretrain_models
 img
 CLINC_OOD
 traditional_methods.tar.gz
+.vscode
+pretrained_models
+pretrain_model
