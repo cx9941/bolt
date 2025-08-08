@@ -1,0 +1,16 @@
+iot_hue_lightoff
+iot_hue_lighton
+iot_hue_lightup
+iot_wemo_off
+iot_wemo_on
+lists_createoradd
+lists_query
+lists_remove
+music_likeness
+music_query
+music_settings
+news_query
+play_audiobook
+play_game
+play_music
+play_podcasts

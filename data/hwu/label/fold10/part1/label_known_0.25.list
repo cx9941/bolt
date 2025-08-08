@@ -1,0 +1,16 @@
+calendar_query
+calendar_remove
+calendar_set
+cooking_recipe
+datetime_convert
+datetime_query
+email_addcontact
+email_query
+email_querycontact
+email_sendemail
+general_affirm
+general_commandstop
+general_confirm
+general_dontcare
+general_explain
+general_joke
