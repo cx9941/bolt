@@ -20,7 +20,9 @@ from torch.optim import LBFGS
 from torch.utils.data import DataLoader
 
 from pytorch_ood.detector.softmax import MaxSoftmax
-from pytorch_ood.utils import extract_features, is_known
+
+# from pytorch_ood.utils import extract_features, is_known
+from ..utils import extract_features, is_known
 
 from ..api import RequiresFittingException
 
