@@ -3,6 +3,7 @@
 # pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 # pip install flash-attn --no-build-isolation
 # export CUDA_HOME=/root/miniconda3/envs/py312
+# export CUDA_HOME=/ssd/lijinpeng/miniconda3/envs/bolt
 # export PATH=$CUDA_HOME/bin:$PATH
 
 accelerate

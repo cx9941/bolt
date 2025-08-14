@@ -11,6 +11,17 @@ origin_train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_dat
 origin_eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/dev.tsv', sep='\t')
 origin_test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
 
+# 1. 计算已知类的数量
+args.num_known_classes = len(known_label_list)
+
+# 2. 计算未知类的数量
+# 从完整的测试集中获取所有出现过的标签
+all_labels_in_test = set(origin_test_data['label'].unique())
+known_labels_set = set(known_label_list)
+
+# 通过集合运算找出未知类
+novel_labels_set = all_labels_in_test - known_labels_set
+args.num_novel_classes = len(novel_labels_set)
 
 ## id train data
 train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
