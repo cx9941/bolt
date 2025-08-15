@@ -33,6 +33,8 @@ def load_and_prepare_datasets(args):
     train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
     train_data['text'] =  origin_train_data['text']
     train_data = train_data[(train_data['label'].isin(known_label_list)) & (train_data['labeled'])].drop('labeled',  axis=1)
+    ### (train_data['labeled'])].drop('labeled',  axis=1):
+    # 在已经满足了前面所有条件的数据行中，再进一步筛选出‘labeled’列为 True 的那些行，然后在筛选完成后，把‘labeled’这一列从结果中删除掉。 
 
     ## id eval data
     eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/dev.tsv', sep='\t')
