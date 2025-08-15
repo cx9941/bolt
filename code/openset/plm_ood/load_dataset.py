@@ -1,110 +1,121 @@
+# load_dataset.py 
+
 import torch
 import pandas as pd
 from torch.utils.data import DataLoader
-from configs import args
-from datasets import concatenate_datasets
-
-known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.rate}.list', header=None)[0].tolist()
-
-## origin data
-origin_train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/train.tsv', sep='\t')
-origin_eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/dev.tsv', sep='\t')
-origin_test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
-
-# 1. 计算已知类的数量
-args.num_known_classes = len(known_label_list)
-
-# 2. 计算未知类的数量
-# 从完整的测试集中获取所有出现过的标签
-all_labels_in_test = set(origin_test_data['label'].unique())
-known_labels_set = set(known_label_list)
-
-# 通过集合运算找出未知类
-novel_labels_set = all_labels_in_test - known_labels_set
-args.num_novel_classes = len(novel_labels_set)
-
-## id train data
-train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
-train_data['text'] =  origin_train_data['text']
-train_data = train_data[(train_data['label'].isin(known_label_list)) & (train_data['labeled'])].drop('labeled',  axis=1)
-
-## id eval data
-eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/dev.tsv', sep='\t')
-eval_data['text'] =  origin_eval_data['text']
-data_in_eval = eval_data[(eval_data['label'].isin(known_label_list)) & (eval_data['labeled'])].drop('labeled',  axis=1)
-
-## all test data
-test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
-data_in_test = test_data[test_data['label'].isin(known_label_list)]
-data_out_test = test_data[~test_data['label'].isin(known_label_list)]
-data_out_test['label'] = 'ood'
-
-
-train_data['labels'] = train_data['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
-data_in_eval['labels'] = data_in_eval['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
-data_in_test['labels'] = data_in_test['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
-data_out_test['labels'] = data_out_test['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
-
-args.num_labels = len(known_label_list)
-# 检查数据格式
-print(train_data.head())
-
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 from transformers import AutoTokenizer
 
-# 初始化tokenizer
-tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-tokenizer.add_special_tokens({'eos_token': '[END]'})
-
-# 将Pandas DataFrame转换为 Hugging Face Dataset
-train_dataset = Dataset.from_pandas(train_data.reset_index(drop=True))
-dataset_in_eval = Dataset.from_pandas(data_in_eval.reset_index(drop=True))
-dataset_in_test = Dataset.from_pandas(data_in_test.reset_index(drop=True))
-dataset_out_test = Dataset.from_pandas(data_out_test.reset_index(drop=True))
+from configs import get_plm_ood_config
 
 
-# 定义tokenizer函数
-def tokenize_function(example):
-    return tokenizer(example['text'], padding="max_length", truncation=True, max_length=60)
+def load_and_prepare_datasets(args):
+    """
+    加载、处理并准备所有需要的数据集、数据加载器和分词器。
+    
+    Args:
+        args: 包含所有配置的参数对象。
+        
+    Returns:
+        一个包含所有数据对象的字典。
+    """
+    known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.rate}.list', header=None)[0].tolist()
+    
+    # 将标签数量更新到 args 对象中，以便其他模块使用
+    args.num_labels = len(known_label_list)
 
-# 对数据集进行tokenization
-train_dataset = train_dataset.map(tokenize_function, batched=True)
-dataset_in_test = dataset_in_test.map(tokenize_function, batched=True)
-dataset_in_eval = dataset_in_eval.map(tokenize_function, batched=True)
-dataset_out_test = dataset_out_test.map(tokenize_function, batched=True)
+    ## origin data
+    origin_train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/train.tsv', sep='\t')
+    origin_eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/dev.tsv', sep='\t')
+    origin_test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
+
+    ## id train data
+    train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
+    train_data['text'] =  origin_train_data['text']
+    train_data = train_data[(train_data['label'].isin(known_label_list)) & (train_data['labeled'])].drop('labeled',  axis=1)
+
+    ## id eval data
+    eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/dev.tsv', sep='\t')
+    eval_data['text'] =  origin_eval_data['text']
+    data_in_eval = eval_data[(eval_data['label'].isin(known_label_list)) & (eval_data['labeled'])].drop('labeled',  axis=1)
+
+    ## all test data
+    test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
+    data_in_test = test_data[test_data['label'].isin(known_label_list)]
+    data_out_test = test_data[~test_data['label'].isin(known_label_list)]
+    data_out_test['label'] = 'ood'
 
 
-# 删除无关列
-train_dataset = train_dataset.remove_columns(["text", 'label'])
-dataset_in_test = dataset_in_test.remove_columns(["text", 'label'])
-dataset_in_eval = dataset_in_eval.remove_columns(["text", 'label'])
-dataset_out_test = dataset_out_test.remove_columns(["text", 'label'])
+    train_data['labels'] = train_data['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
+    data_in_eval['labels'] = data_in_eval['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
+    data_in_test['labels'] = data_in_test['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
+    data_out_test['labels'] = data_out_test['label'].apply(lambda x: known_label_list.index(x) if x in known_label_list else -1)
+    
+    # 初始化tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    tokenizer.add_special_tokens({'eos_token': '[END]'})
+
+    # 将Pandas DataFrame转换为 Hugging Face Dataset
+    train_dataset = Dataset.from_pandas(train_data.reset_index(drop=True))
+    dataset_in_eval = Dataset.from_pandas(data_in_eval.reset_index(drop=True))
+    dataset_in_test = Dataset.from_pandas(data_in_test.reset_index(drop=True))
+    dataset_out_test = Dataset.from_pandas(data_out_test.reset_index(drop=True))
+
+    def tokenize_function(example):
+        return tokenizer(example['text'], padding="max_length", truncation=True, max_length=60)
+
+    train_dataset = train_dataset.map(tokenize_function, batched=True)
+    dataset_in_test = dataset_in_test.map(tokenize_function, batched=True)
+    dataset_in_eval = dataset_in_eval.map(tokenize_function, batched=True)
+    dataset_out_test = dataset_out_test.map(tokenize_function, batched=True)
+
+    train_dataset = train_dataset.remove_columns(["text", 'label'])
+    dataset_in_test = dataset_in_test.remove_columns(["text", 'label'])
+    dataset_in_eval = dataset_in_eval.remove_columns(["text", 'label'])
+    dataset_out_test = dataset_out_test.remove_columns(["text", 'label'])
+    
+    test_dataset = concatenate_datasets([dataset_in_test, dataset_out_test])
+
+    train_dataset.set_format("torch")
+    dataset_in_eval.set_format("torch")
+    test_dataset.set_format("torch")
+
+    def collate_batch(batch, max_len=512):
+        ans = {}
+        max_len = max([i['input_ids'].shape[0] for i in batch])
+        for key in batch[0]:
+            if key in ['input_ids', 'attention_mask', 'token_type_ids']:
+                padded = [i[key].tolist() + (max_len - len(i[key])) * [0 if key != 'input_ids' else tokenizer.pad_token_id] for i in batch]
+                ans[key] = torch.tensor(padded, dtype=torch.long)
+            else:
+                ans[key] = torch.stack([i[key] for i in batch])
+        return ans
+
+    loader_in_train = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=collate_batch)
+    loader_in_eval = DataLoader(dataset_in_eval, batch_size=args.eval_batch_size, shuffle=False, collate_fn=collate_batch)
+    test_loader = DataLoader(test_dataset, shuffle=False, batch_size=args.eval_batch_size, collate_fn=collate_batch)
+    
+    # -----------------
+    return {
+        "train_dataset": train_dataset,
+        "dataset_in_eval": dataset_in_eval,
+        "dataset_in_test": dataset_in_test,
+        "dataset_out_test": dataset_out_test,
+        "test_dataset": test_dataset,
+        "loader_in_train": loader_in_train,
+        "loader_in_eval": loader_in_eval,
+        "test_loader": test_loader,
+        "tokenizer": tokenizer,
+        "collate_batch": collate_batch
+    }
+    # -----------------
 
 
-test_dataset = concatenate_datasets([dataset_in_test, dataset_out_test])
-
-# 设置数据格式为 PyTorch tensors
-train_dataset.set_format("torch")
-dataset_in_test.set_format("torch")
-dataset_in_eval.set_format("torch")
-dataset_out_test.set_format("torch")
-
-test_dataset.set_format("torch")
-
-def collate_batch(batch, max_len=512):
-    ans = {}
-    max_len = max([i['input_ids'].shape[0] for i in batch])
-    for key in batch[0]:
-        if key in ['input_ids', 'attention_mask', 'token_type_ids']:
-            padded = [i[key].tolist() + (max_len - len(i[key])) * [0 if key != 'input_ids' else tokenizer.pad_token_id] for i in batch]
-            ans[key] = torch.tensor(padded, dtype=torch.long)
-        else:
-            ans[key] = torch.stack([i[key] for i in batch])
-    return ans
-
-loader_in_train = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=collate_batch)
-loader_in_test = DataLoader(dataset_in_test, batch_size=args.eval_batch_size, shuffle=False, collate_fn=collate_batch)
-loader_in_eval = DataLoader(dataset_in_eval, batch_size=args.eval_batch_size, shuffle=False, collate_fn=collate_batch)
-
-test_loader = DataLoader(test_dataset, shuffle=False, batch_size=args.eval_batch_size, collate_fn=collate_batch)
+if __name__ == '__main__':
+    config_args = get_plm_ood_config()
+    data_objects = load_and_prepare_datasets(config_args)
+    
+    print("Data loading test successful!")
+    print("Loaded objects:", list(data_objects.keys()))
+    print("Sample from train loader:", next(iter(data_objects['loader_in_train'])))
