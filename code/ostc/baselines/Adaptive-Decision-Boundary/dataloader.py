@@ -33,6 +33,9 @@ class Data:
         self.train_examples = self.get_examples(processor, args, 'train')
         self.eval_examples = self.get_examples(processor, args, 'eval')
         self.test_examples = self.get_examples(processor, args, 'test')
+
+
+        self.train_labeled_data = pd.read_csv(f'../../data/{args.dataset}/labeled_data/{args.known_cls_ratio}/{args.labeled_ratio}/train.tsv', sep='\t')
         
         self.train_dataloader = self.get_loader(self.train_examples, args, 'train')
         self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval')

@@ -87,3 +87,19 @@ pip install -r requirements.txt
 3.	Run experiments under code/gcd/ or code/openset/.
 
 4.	Use notebooks in data/ for dataset preparation and statistics.
+
+
+### dataset
+
+[BANKING](https://aclanthology.org/D19-1131), [CLINC](https://aclanthology.org/D19-1131), [StackOverflow](https://doi.org/10.3115/v1/W15-1509), [MICD](https://aclanthology.org/2020.nlpcovid19-acl.15/), [HWU](https://aclanthology.org/2020.nlp4convai-1.5/), [medical](https://github.com/sebischair/Medical-Abstracts-TC-Corpus)
+
+[20NG](https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html)
+[AGNews](https://labelbox.com/datasets/ag-news/)
+[DBPedia](http://dev.dbpedia.org/Download_DBpedia)
+[EUR-Lex](https://huggingface.co/datasets/coastalcph/multi_eurlex)
+[indic-NLP](https://github.com/AI4Bharat/indicnlp_corpus)
+[Router-2157](https://kdd.ics.uci.edu/databases/reuters21578/reuters21578.html)
+[TREC](https://huggingface.co/datasets/CogComp/trec)
+[X-Topic](https://aclanthology.org/2024.emnlp-main.1123.pdf?utm_source=chatgpt.com)
+[Yahoo](https://www.kaggle.com/datasets/bhavikardeshna/yahoo-email-classification)
+[multi3nlu++](https://aclanthology.org/2023.findings-acl.230.pdf)

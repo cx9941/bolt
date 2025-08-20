@@ -1,5 +1,5 @@
-config_file='../../configs/yaml/7916-deepspeed_config_z3_qlora.yaml'
 set -o errexit
+config_file='../../configs/yaml/7916-deepspeed_config_z3_qlora.yaml'
 gpu_id='2'
 # for reg_loss in 'normal' 'npo'  'vos'
 for reg_loss in 'normal'

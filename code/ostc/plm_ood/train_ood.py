@@ -1,10 +1,10 @@
 from configs import args
 import os
 import copy
-if os.path.exists(args.metric_file):
-    exit()
-if os.path.exists(args.case_path + f'/OpenMax_preds.npy'):
-    exit()
+# if os.path.exists(args.metric_file):
+#     exit()
+# if os.path.exists(args.case_path + f'/OpenMax_preds.npy'):
+#     exit()
 
 import os
 import pandas as pd
@@ -20,8 +20,10 @@ from src.pytorch_ood.detector import (
     MaxSoftmax,
     ViM,
     OpenMax,
+    TemperatureScaling,
     ASH,
-    SHE
+    SHE,
+    LogitNorm
 )
 from src.pytorch_ood.utils import OODMetrics, fix_random_seed, custom_metrics
 
@@ -29,7 +31,7 @@ import numpy as np
 import logging
 
 from model import Model
-from load_dataset import train_dataset, dataset_in_test, dataset_out_test, collate_batch, loader_in_train, loader_in_test, test_loader, eval_loader, loader_in_eval
+from load_dataset import train_dataset, dataset_in_test, dataset_out_test, collate_batch, loader_in_train, test_loader
 
 
 if __name__ == '__main__':
@@ -37,24 +39,36 @@ if __name__ == '__main__':
     model = Model(args).to(args.device)
     with torch.no_grad():
         model.eval()
-        preds = []
-        golds = []
-        logits = []
-        features = []
-        for batch in tqdm(test_loader):
-            y = batch['labels'].to(args.device)
-            batch = {i:v.to(args.device) for i,v in batch.items() if i!= 'labels'}
-            logit = model(batch)
-            feature = model.features(batch)
-            pred = logit.max(dim=1).indices
-            preds.append(pred)
-            logits.append(logit)
-            golds.append(y)
-            features.append(feature)
-        logits = torch.concat(logits).detach().cpu().numpy()
-        preds = torch.concat(preds).detach().cpu().numpy()
-        golds = torch.concat(golds).detach().cpu().numpy()
-        features = torch.concat(features).detach().cpu().numpy()
+        if not os.path.exists(f'{args.vector_path}/logits.npy'):
+            preds = []
+            golds = []
+            logits = []
+            features = []
+            for batch in tqdm(test_loader):
+                y = batch['labels'].to(args.device)
+                batch = {i:v.to(args.device) for i,v in batch.items() if i!= 'labels'}
+                logit = model(batch)
+                feature = model.features(batch)
+                pred = logit.max(dim=1).indices
+                preds.append(pred)
+                logits.append(logit)
+                golds.append(y)
+                features.append(feature)
+            logits = torch.concat(logits).detach().to(torch.float32).cpu().numpy()
+            preds = torch.concat(preds).detach().cpu().numpy()
+            golds = torch.concat(golds).detach().cpu().numpy()
+            features = torch.concat(features).detach().to(torch.float32).cpu().numpy()
+
+            np.save(f'{args.vector_path}/logits.npy', logits)
+            np.save(f'{args.vector_path}/preds.npy', preds)
+            np.save(f'{args.vector_path}/golds.npy', golds)
+            np.save(f'{args.vector_path}/features.npy', features)
+        else:
+            logits = np.load(f'{args.vector_path}/logits.npy')
+            preds = np.load(f'{args.vector_path}/preds.npy')
+            golds = np.load(f'{args.vector_path}/golds.npy')
+            features = np.load(f'{args.vector_path}/features.npy')
+
         ID_metrics = custom_metrics(preds, golds)
         
         logging.info(f"Test Accuracy: {ID_metrics['macro avg']}")
@@ -62,15 +76,18 @@ if __name__ == '__main__':
     logging.info("STAGE 2: Creating OOD Detectors")
 
     detectors = {}
-    detectors["SHE"] = SHE(model=model.features, head=model.fc)
+    detectors["TemperatureScaling"] = TemperatureScaling(model)
+    detectors["LogitNorm"] = LogitNorm(model)
     detectors["OpenMax"] = OpenMax(model)
-    detectors["ViM"] = ViM(model.features, d=64, w=model.fc.weight, b=model.fc.bias)
     detectors["Entropy"] = Entropy(model)
     detectors["Mahalanobis"] = Mahalanobis(model.features, eps=0.0)
     detectors["KLMatching"] = KLMatching(model)
     detectors["MaxSoftmax"] = MaxSoftmax(model)
     detectors["EnergyBased"] = EnergyBased(model)
     detectors["MaxLogit"] = MaxLogit(model)
+
+    # detectors["SHE"] = SHE(model=model.features, head=model.fc)
+    # detectors["ViM"] = ViM(model.features, d=64, w=model.fc.weight, b=model.fc.bias)
 
     logging.info(f"> Fitting {len(detectors)} detectors")
 
