@@ -1,0 +1,54 @@
+# SCL 方法的通用配置模板
+# ----------------------------------
+
+# --- 基础设置 ---
+seed: 0
+gpu_id: "0"
+cuda: true # 可以直接使用 true/false
+
+# --- 数据与任务设置 ---
+dataset: "news"
+data_dir: "./data"
+known_cls_ratio: 0.25 
+labeled_ratio: 1.0
+fold_idx: 0
+fold_num: 5
+
+# --- 任务运行模式与设置 ---
+mode: "both"
+setting: ["gda", "lof", "msp"]
+
+# --- 模型与训练设置 ---
+# 路径设置
+embedding_file: "./pretrained_models/glove.6B.300d.txt" 
+
+# 模型结构参数
+hidden_dim: 128
+contractive_dim: 32
+embedding_dim: 300
+max_seq_len: 64
+max_num_words: 10000
+num_layers: 1
+do_normalization: True
+
+# 损失函数与训练策略参数 (现在可以直接用 true/false)
+alpha: 1.0
+beta: 1.0
+norm_coef: 0.1
+adv: false
+cont_loss: true
+sup_cont: true
+
+# 训练周期
+ind_pre_epoches: 3
+supcont_pre_epoches: 3
+finetune_epoches: 20
+
+# 训练超参数
+train_batch_size: 8
+learning_rate: 0.001
+weight_decay: 0.0001
+clip: 0.25
+
+# --- 输出目录设置 ---
+output_dir: "./outputs/openset/scl"

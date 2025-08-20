@@ -30,11 +30,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, NamedTuple
 # Integrations must be imported before ML frameworks:
 from transformers.integrations import (  # isort: split
-    default_hp_search_backend,
     hp_params,
     is_azureml_available,
     is_comet_available,
-    is_fairscale_available,
     is_mlflow_available,
     is_optuna_available,
     is_ray_available,
@@ -55,10 +53,12 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from transformers.data.data_collator import DataCollator, DataCollatorWithPadding, default_data_collator
-from transformers.file_utils import WEIGHTS_NAME, is_datasets_available, is_in_notebook, is_torch_tpu_available
+from transformers.file_utils import WEIGHTS_NAME, is_datasets_available, is_in_notebook
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.modeling_auto import MODEL_FOR_QUESTION_ANSWERING_MAPPING
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+# from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+from torch.optim import AdamW
+from transformers.optimization import get_linear_schedule_with_warmup
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers.trainer_callback import (
     CallbackHandler,
@@ -88,7 +88,6 @@ from transformers.trainer_utils import (
     HPSearchBackend,
     TrainOutput,
     default_compute_objective,
-    default_hp_space,
     set_seed,
 )
 
@@ -126,10 +125,10 @@ else:
 if is_datasets_available():
     import datasets
 
-if is_torch_tpu_available():
-    import torch_xla.core.xla_model as xm
-    import torch_xla.debug.metrics as met
-    import torch_xla.distributed.parallel_loader as pl
+# if is_torch_tpu_available():
+#     import torch_xla.core.xla_model as xm
+#     import torch_xla.debug.metrics as met
+#     import torch_xla.distributed.parallel_loader as pl
 
 if is_tensorboard_available():
     from transformers.integrations import TensorBoardCallback
@@ -163,8 +162,8 @@ if is_azureml_available():
 
     DEFAULT_CALLBACKS.append(AzureMLCallback)
 
-if is_fairscale_available():
-    pass
+# if is_fairscale_available():
+#     pass
 
 logger = logging.get_logger(__name__)
 
@@ -260,8 +259,8 @@ class Evaluation:
                 self.train_dataset, collections.abc.Sized
         ):
             return None
-        elif is_torch_tpu_available():
-            return get_tpu_sampler(self.train_dataset)
+        # elif is_torch_tpu_available():
+        #     return get_tpu_sampler(self.train_dataset)
         else:
             return (
                 RandomSampler(self.train_dataset)
@@ -292,9 +291,9 @@ class Evaluation:
         )
 
     def _get_eval_sampler(self, eval_dataset: Dataset) -> Optional[torch.utils.data.sampler.Sampler]:
-        if is_torch_tpu_available():
-            return SequentialDistributedSampler(eval_dataset, num_replicas=xm.xrt_world_size(), rank=xm.get_ordinal())
-        elif self.args.local_rank != -1:
+        # if is_torch_tpu_available():
+        #     return SequentialDistributedSampler(eval_dataset, num_replicas=xm.xrt_world_size(), rank=xm.get_ordinal())
+        if self.args.local_rank != -1:
             return SequentialDistributedSampler(eval_dataset)
         else:
             return SequentialSampler(eval_dataset)
@@ -631,7 +630,7 @@ class Evaluation:
 
                 # if the dateset is clinc_full or clinc_small, the threashold of euclidean-based
                 # should be different for cosine-based
-                if "clinc" in self.args.data and "euclidean" in setting:
+                if "clinc" in self.args.dataset and "euclidean" in setting:
                     best_item -= -2.1
                 is_inlier = np.ones(len(feature_test), dtype=int)
                 # y_pred_lof = lof.predict(feature_test)
@@ -650,31 +649,48 @@ class Evaluation:
                 print("this is %s" % setting)
 
                 f, acc_all, f_seen, acc_in, p_seen, r_seen, f_unseen, acc_ood, p_unseen, r_unseen = get_score(cm)
-                results = {}
-                results['METRIC'] = dis_metric
-                results['SEED'] = self.args.seed
-                results['ACC_ALL'] = acc_all
-                results['F1_ALL'] = f
-                results['F1_OOD'] = f_unseen
-                results['F1_IND'] = f_seen
+                # ========================================================================
+                # --- 全新的、标准化的结果保存逻辑 (最终版) ---
+                # ========================================================================
+                import pandas as pd
+                import os
+                
+                # --- 步骤1：创建一个只包含最终指标的“单行”结果字典 ---
+                final_results = {}
 
+                # a. 添加实验参数元数据
+                final_results['dataset'] = self.args.dataset
+                final_results['seed'] = self.args.seed
+                final_results['known_cls_ratio'] = self.args.known_cls_ratio
+                final_results['ood_method'] = setting # 记录本次使用的是哪种OOD检测方法
 
-                keys = list(results.keys())
-                values = list(results.values())
+                # b. 添加核心的总览性能指标 (f, acc_all等变量来自您提供的代码中的 get_score(cm) 的返回值)
+                final_results['ACC'] = acc_all
+                final_results['F1'] = f
+                final_results['K-F1'] = f_seen
+                final_results['N-F1'] = f_unseen
 
-                # results_path = 'results_banking_0.25_lof_yunhua.csv'
-                results_path = './model_output/' + '_'.join([self.args.data, str(self.args.known_ratio), str(self.args.seed)]) + '.csv'
-                #results_path = os.path.join(args.save_results_path, file_name)
+                # --- 步骤2：将“单行”结果追加保存到主 results.csv 文件 ---
+                # 定义标准化的 metrics 输出目录和文件路径
+                metric_dir = os.path.join(self.args.output_dir, 'metrics')
+                os.makedirs(metric_dir, exist_ok=True) # 关键：确保目录存在，解决OSError
+                results_path = os.path.join(metric_dir, 'results.csv')
 
                 if not os.path.exists(results_path):
-                    ori = []
-                    ori.append(values)
-                    df1 = pd.DataFrame(ori,columns = keys)
-                    df1.to_csv(results_path,index=False)
+                    # 如果文件不存在，直接创建并写入（包含表头）
+                    df_to_save = pd.DataFrame([final_results])
+                    df_to_save.to_csv(results_path, index=False)
                 else:
-                    df1 = pd.read_csv(results_path)
-                    new = pd.DataFrame(results,index=[1])
-                    df1 = df1._append(new,ignore_index=True)
-                    df1.to_csv(results_path,index=False)
-                data_diagram = pd.read_csv(results_path)   
+                    # 如果文件存在，则读取->追加->写回
+                    existing_df = pd.read_csv(results_path)
+                    new_row_df = pd.DataFrame([final_results])
+                    updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+                    updated_df.to_csv(results_path, index=False)
+
+                print(f"\nResults have been saved to: {results_path}")
+                print("Appended new result row for setting '{}':".format(setting))
+                print(pd.DataFrame([final_results]))
+                # ========================================================================
+                # --- 结果保存逻辑结束 ---
+                # ======================================================================== 
 

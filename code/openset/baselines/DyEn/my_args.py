@@ -5,32 +5,43 @@ from dataclasses import dataclass, field
 @dataclass
 class DataTrainingArguments:
     """
-    known_ratio data 可以从 json 里面设置，其余的均为自动生成或者写死
+    Arguments pertaining to what data we are going to input our model for training and eval.
+    (已根据SOP进行标准化改造 - 最终版)
     """
-    known_ratio: float = field(metadata={"help": "MASK (1-known_ratio) labels as OOD labels"})
-    data: str = field(metadata={"help": "dataset name"})
-
-    ##################################################################################
-    # 自动生成
-    # train_file valid_file test_file 依赖 data
-    train_file: str = field(
-        init=False, metadata={"help": "A csv or a json file containing the training data."}
+    # --- 步骤1: 先定义所有【没有】默认值的参数 ---
+    dataset: str = field(
+        metadata={"help": "The name of the dataset to use."}
     )
-    valid_file: str = field(
-        init=False, metadata={"help": "A csv or a json file containing the validation data."}
-    )
-    test_file: str = field(
-        init=False, metadata={"help": "A csv or a json file containing the test data."}
+    known_cls_ratio: float = field(
+        metadata={"help": "The ratio of known classes."}
     )
 
-    ##################################################################################
-    # 写死
+    # --- 步骤2: 再定义所有【有】默认值的参数 ---
+    data_dir: str = field(
+        default="./data",
+        metadata={"help": "The input data dir."}
+    )
+    labeled_ratio: float = field(
+        default=1.0,
+        metadata={"help": "The ratio of labeled data to use."}
+    )
+    fold_idx: int = field(
+        default=0,
+        metadata={"help": "The index of the fold for cross-validation."}
+    )
+    fold_num: int = field(
+        default=5,
+        metadata={"help": "The total number of folds for cross-validation."}
+    )
+    # --- 新增：补上遗漏的 gpu_id 参数 ---
+    gpu_id: str = field(
+        default="0",
+        metadata={"help": "The GPU ID to use."}
+    )
 
-    # default=xxx && init=False 禁止初始化时候修改（类似于 const）
-    # 这样强制在 tokenize 预处理时候，所有的句子都 padding 成了 max_seq_length
+    # --- 保留原有的其他非冲突参数 ---
     max_seq_length: int = field(
         default=128,
-        init=False,
         metadata={
             "help": "The maximum total input sequence length after tokenization. Sequences longer "
                     "than this will be truncated, sequences shorter will be padded."
@@ -38,24 +49,15 @@ class DataTrainingArguments:
     )
     pad_to_max_length: bool = field(
         default=True,
-        init=False,
         metadata={
             "help": "Whether to pad all samples to `max_seq_length`. "
                     "If False, will pad the samples dynamically when batching to the maximum length in the batch."
         },
     )
-
     overwrite_cache: bool = field(
         default=True,
-        init=False,
         metadata={"help": "FORCE Overwrite the cached preprocessed datasets or not."}
     )
-
-    def __post_init__(self):
-        self.train_file = './data/' + self.data + '/train.tsv'
-        self.valid_file = './data/' + self.data + '/valid.tsv'
-        self.test_file = './data/' + self.data + '/test.tsv'
-
 
 @dataclass
 class OtherArguments:

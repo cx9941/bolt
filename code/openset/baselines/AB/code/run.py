@@ -1,165 +1,129 @@
-from utils import print_results, get_intents_selection, filter, DS_CLINC150_PATH, DS_BANKING77_PATH
-from custom_embeddings import create_embed_f
+import os
+import json
+import argparse
+import tensorflow_hub as hub
+from sentence_transformers import SentenceTransformer
+import pandas as pd
+
+# 从同级目录导入必要的模块
+from utils import set_seed, Split
 from ADBThreshold import ADBThreshold
 from ood_train import evaluate
 
-import os, json, copy
-import tensorflow_hub as hub
-from sentence_transformers import SentenceTransformer
-from statistics import mean
-import sys
-import torch
-from utils import set_seed
-
-def run(dataset_name, seed=0):
-
-    set_seed(seed)
-
-    if os.path.exists(f'results/{dataset_name}_results.txt'):
-        return 0
-    if not os.path.exists('results'):
-        os.makedirs('results')
-    KNOWN_RATIO, rate = dataset_name.split('_')
-    alpha_rate = {"0.25": 0.35, "0.5":0.4, "0.75":0.75}
-    alpha =  alpha_rate[rate]
-    # LOAD DATASET
-    if dataset_name == 'clinc150':
-        dataset_path = os.path.join(DS_CLINC150_PATH, 'data_full.json')
-    elif dataset_name == 'banking77':
-        dataset_path = os.path.join(DS_BANKING77_PATH, 'banking77.json')
+def get_embed_function(emb_name):
+    """根据名称加载并返回嵌入函数"""
+    if emb_name == 'use_dan':
+        # 注意：路径可能需要根据您的环境调整或提前下载
+        return hub.load("plm/universal-sentence-encoder-tensorflow2-universal-sentence-encoder-v2")
+    elif emb_name == 'use_tran':
+        return hub.load("plm/universal-sentence-encoder-tensorflow2-large-v2")
+    elif emb_name == 'sbert':
+        # return SentenceTransformer('plm/stsb-roberta-base').encode
+        return SentenceTransformer('./pretrained_models/stsb-roberta-base').encode
     else:
-        dataset_path = f"data/{dataset_name}/data_full.json"
+        raise ValueError(f"Unknown embedding name: {emb_name}")
 
-    with open(dataset_path) as f:
-        old_dataset = json.load(f)
+def main(args):
+    # 1. 设置随机种子
+    set_seed(args.seed)
 
-    old_dataset = {key: [[i[0][:512], i[1]] for i in value] for key, value in old_dataset.items()}
+    # 2. (核心改造) 使用标准化的数据加载逻辑
+    print("Loading standardized data...")
+    # a. 加载已知类列表
+    known_label_path = os.path.join(args.data_dir, args.dataset, 'label', f'fold{args.fold_num}', f'part{args.fold_idx}', f'label_known_{args.known_cls_ratio}.list')
+    seen_labels = pd.read_csv(known_label_path, header=None)[0].tolist()
 
-    # LIMIT NUMBER OF SENTENCES?
-    LIMIT_NUM_SENTS = None  # either None (i.e. no limit) or int with value > 0 (i.e. maximal number of sentences per class).
+    # b. 加载 .tsv 数据文件 (已修正)
+    origin_train_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'train.tsv')
+    labeled_train_path = os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'train.tsv')
+    test_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'test.tsv')
+    
+    # 分别加载原始文本和标签划分
+    origin_train_df = pd.read_csv(origin_train_path, sep='\t')
+    labeled_train_df = pd.read_csv(labeled_train_path, sep='\t')
+    df_test = pd.read_csv(test_path, sep='\t')
+    
+    # 将文本和标签信息合并到 df_train 中
+    df_train = labeled_train_df
+    df_train['text'] = origin_train_df['text']
 
-    if LIMIT_NUM_SENTS is not None:
-        print(f'sentences limited to {LIMIT_NUM_SENTS}')
+    # c. 筛选数据，构建符合旧代码格式的列表 list([sentence, label])
+    # 训练集只包含已知类
+    train_data = [list(row) for row in df_train[df_train['label'].isin(seen_labels)][['text', 'label']].itertuples(index=False)]
+    
+    # 测试集包含已知类和未知类 (未知类标签设为'oos')
+    df_test.loc[~df_test['label'].isin(seen_labels), 'label'] = 'oos'
+    test_data = [list(row) for row in df_test[['text', 'label']].itertuples(index=False)]
+    
+    dataset = {
+        "train": train_data,
+        "test": test_data
+    }
+    print(f"Data loaded. Train samples: {len(train_data)}, Test samples: {len(test_data)}")
 
-    for test_idx in [3,4,5, 6, 7, 8, 9]:
+    # 3. 加载嵌入函数
+    print(f"Loading embedding model: {args.emb_name}...")
+    embed_f = get_embed_function(args.emb_name)
 
-        time_pretraining = None
-        accuracy_all_lst = []
-        f1_all_lst = []
-        f1_ood_lst = []
-        f1_id_lst = []
-        time_train_lst = []
-        time_inference_lst = []
-        memory_lst = []
-        time_pretraining_lst = []
+    # 4. 初始化模型
+    model = ADBThreshold(alpha=args.alpha)
+    model_name = type(model).__name__
 
-        for r in range(1):
-            model = ADBThreshold(alpha=alpha)
-            model_name = type(model).__name__
+    # 5. 调用原有的评估函数
+    print("Starting evaluation...")
+    results_dct = evaluate(dataset, model, model_name, embed_f, limit_num_sents=None)
 
-            # CHOOSE EMBEDDING
-            if test_idx in [1, 4, 5]:
-                # embed_f = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
-                embed_f = hub.load("plm/universal-sentence-encoder-tensorflow2-universal-sentence-encoder-v2")
-                emb_name = 'use_dan'
-            elif test_idx in [2, 6, 7]:
-                # embed_f = hub.load("https://tfhub.dev/google/universal-sentence-encoder-large/5")
-                embed_f = hub.load("plm/universal-sentence-encoder-tensorflow2-large-v2")
-                emb_name = 'use_tran'
-            elif test_idx in [3, 8, 9]:
-                embed_f = SentenceTransformer('plm/stsb-roberta-base').encode
-                emb_name = 'sbert'
+    # 6. (核心改造) 标准化结果输出
+    final_results = {}
+    final_results['dataset'] = args.dataset
+    final_results['seed'] = args.seed
+    final_results['known_cls_ratio'] = args.known_cls_ratio
+    final_results['emb_name'] = args.emb_name
+    final_results['alpha'] = args.alpha
+    
+    # 将 evaluate 返回的结果合并进来
+    final_results['ACC'] = results_dct.get('accuracy_all', 0.0)
+    final_results['F1'] = results_dct.get('f1_all', 0.0)
+    final_results['K-F1'] = results_dct.get('f1_id', 0.0)
+    final_results['N-F1'] = results_dct.get('f1_ood', 0.0)
 
-            dataset = copy.deepcopy(old_dataset)
+    # 7. 将结果追加保存到主 results.csv 文件
+    metric_dir = os.path.join(args.output_dir, 'metrics')
+    os.makedirs(metric_dir, exist_ok=True)
+    results_path = os.path.join(metric_dir, 'results.csv')
 
-            # num_classes = len(set([x[1] for x in dataset['train']]))
-            # num_sel_classes = int(KNOWN_RATIO * num_classes)
-            # selection = get_intents_selection(dataset['train'], num_intents=num_sel_classes)
-
-            # filt_train = filter(dataset['train'], selection, 'train')
-            # filt_test = filter(dataset['test'], selection, 'test')
-
-            # dataset['train'] = filt_train
-            # dataset['test'] = filt_test
-
-            # CHOOSE PRE-TRAINING
-            if test_idx == 4:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS, type='cosface')
-                emb_name = 'use_dan_cosface'
-            elif test_idx == 5:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS,
-                                                            type='triplet_loss')
-                emb_name = 'use_dan_triplet_loss'
-            elif test_idx == 6:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS, type='cosface')
-                emb_name = 'use_tran_cosface'
-            elif test_idx == 7:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS,
-                                                            type='triplet_loss')
-                emb_name = 'use_tran_triplet_loss'
-            elif test_idx == 8:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS, type='cosface')
-                emb_name = 'sbert_cosface'
-            elif test_idx == 9:
-                embed_f, time_pretraining = create_embed_f(embed_f, dataset, LIMIT_NUM_SENTS,
-                                                            type='triplet_loss')
-                emb_name = 'sbert_triplet_loss'
-
-            results_dct = evaluate(dataset, model, model_name, embed_f, LIMIT_NUM_SENTS)
-
-            accuracy_all_lst.append(results_dct['accuracy_all'])
-            f1_all_lst.append(results_dct['f1_all'])
-            f1_ood_lst.append(results_dct['f1_ood'])
-            f1_id_lst.append(results_dct['f1_id'])
-            time_train_lst.append(results_dct['time_train'])
-            time_inference_lst.append(results_dct['time_inference'])
-            memory_lst.append(results_dct['memory'])
-
-            if time_pretraining is not None:
-                time_pretraining_lst.append(time_pretraining)
-
-            print_results(dataset_name, model_name, emb_name, results_dct)
-
-        accuracy_all = round(mean(accuracy_all_lst), 1)
-        f1_all = round(mean(f1_all_lst), 1)
-        f1_ood = round(mean(f1_ood_lst), 1)
-        f1_id = round(mean(f1_id_lst), 1)
-        time_train = round(mean(time_train_lst), 1)
-        time_inference = round(mean(time_inference_lst), 1)
-        memory = round(mean(memory_lst), 1)
-        time_pretraining = round(mean(time_pretraining_lst), 1) if len(time_pretraining_lst) != 0 else 0
-
-        print(
-            f'test_idx: {test_idx}, dataset: {dataset_name}, embedding: {emb_name},'
-            f' known ratio: {KNOWN_RATIO}, alpha: {alpha}')
-        print(
-            f'accuracy_all: {accuracy_all},'
-            f' f1_all: {f1_all},'
-            f' f1_ood: {f1_ood},'
-            f' f1_id: {f1_id},'
-            f' time_train: {time_train},'
-            f' time_inference: {time_inference},'
-            f' memory: {memory},'
-            f' time_pretraining: {time_pretraining}')
-
-        with open(f'results/{dataset_name}_results_{seed}.txt', 'a') as f:
-            f.write(
-                f'test_idx: {test_idx},'
-                f' dataset: {dataset_name},'
-                f' embedding: {emb_name},'
-                f' known ratio: {KNOWN_RATIO},'
-                f' alpha: {alpha},'
-                f' accuracy_all: {accuracy_all},'
-                f' f1_all: {f1_all},'
-                f' f1_ood: {f1_ood},'
-                f' f1_id: {f1_id},'
-                f' time_train: {time_train},'
-                f' time_inference: {time_inference},'
-                f' memory: {memory},'
-                f' time_pretraining: {time_pretraining}'
-                f'\n'
-            )
+    if not os.path.exists(results_path):
+        df_to_save = pd.DataFrame([final_results])
+        df_to_save.to_csv(results_path, index=False)
+    else:
+        existing_df = pd.read_csv(results_path)
+        new_row_df = pd.DataFrame([final_results])
+        updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+        updated_df.to_csv(results_path, index=False)
+        
+    print("\nResults have been saved to:", results_path)
+    print("Appended new result row:")
+    print(pd.DataFrame([final_results]))
 
 
 if __name__ == '__main__':
-    run(sys.argv[1], int(sys.argv[2]))
+    parser = argparse.ArgumentParser()
+    # 添加所有在YAML中定义的参数
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--gpu_id', type=str, default="0")
+    parser.add_argument('--dataset', type=str, default='banking')
+    parser.add_argument('--data_dir', type=str, default='./data')
+    parser.add_argument('--known_cls_ratio', type=float, default=0.25)
+    parser.add_argument('--labeled_ratio', type=float, default=1.0)
+    parser.add_argument('--fold_idx', type=int, default=0)
+    parser.add_argument('--fold_num', type=int, default=5)
+    parser.add_argument('--emb_name', type=str, choices=["sbert", "use_dan", "use_tran"], default='sbert')
+    parser.add_argument('--alpha', type=float, default=0.35)
+    parser.add_argument('--output_dir', type=str, default='./outputs/openset/ab')
+    
+    args = parser.parse_args()
+    
+    # 设置GPU (如果模型需要)
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    
+    main(args)

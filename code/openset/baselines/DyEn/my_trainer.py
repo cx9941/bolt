@@ -3,7 +3,7 @@ from typing import Optional
 import math
 import copy
 
-import fitlog
+# import fitlog
 import numpy as np
 import torch
 from sklearn import metrics
@@ -114,7 +114,7 @@ class SimpleTrainer(Trainer):
 
                 cl_loss_name = 'ce_loss'
                 cur_epoch_loss = cur_epoch_sum_loss / cur_epoch_step_nums
-                fitlog.add_loss(cur_epoch_loss, name=cl_loss_name, step=epoch)
+                # fitlog.add_loss(cur_epoch_loss, name=cl_loss_name, step=epoch)
                 # Get model performing in valid IND
                 f1 = self.evaluation_cal(model, valid_loader)
 

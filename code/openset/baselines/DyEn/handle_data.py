@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import torch
@@ -57,14 +58,19 @@ def convert_to_nums(data_args: DataTrainingArguments, datasets: DatasetDict, lab
     # 这里是本项目自定义的
 
     # Again, we try to have some nice defaults but don't hesitate to tweak to your use case.
-    non_label_column_names = [name for name in datasets["train"].column_names if name != "label"]
-    if "sentence1" in non_label_column_names and "sentence2" in non_label_column_names:
-        sentence1_key, sentence2_key = "sentence1", "sentence2"
-    else:
-        if len(non_label_column_names) >= 2:
-            sentence1_key, sentence2_key = non_label_column_names[:2]
-        else:
-            sentence1_key, sentence2_key = non_label_column_names[0], None
+    # non_label_column_names = [name for name in datasets["train"].column_names if name != "label"]
+    # if "sentence1" in non_label_column_names and "sentence2" in non_label_column_names:
+    #     sentence1_key, sentence2_key = "sentence1", "sentence2"
+    # else:
+    #     if len(non_label_column_names) >= 2:
+    #         sentence1_key, sentence2_key = non_label_column_names[:2]
+    #     else:
+    #         sentence1_key, sentence2_key = non_label_column_names[0], None
+
+    # --- 修正：绕过脆弱的自动列名检测，直接指定文本列 ---
+    # 我们的数据集是单句分类，文本列永远是 'text'
+    sentence1_key, sentence2_key = "text", None
+    # --- 修正结束 ---
 
     # Padding strategy
     if data_args.pad_to_max_length:
@@ -112,37 +118,56 @@ def convert_to_nums(data_args: DataTrainingArguments, datasets: DatasetDict, lab
 
 
 def load_datasets(data_args: DataTrainingArguments) -> DatasetDict:
-    # See more about loading any type of standard or custom dataset at
-    # https://huggingface.co/docs/datasets/loading_datasets.html.
-    df_train = pd.read_csv(data_args.train_file, sep='\t', dtype=str)
-    df_valid = pd.read_csv(data_args.valid_file, sep='\t', dtype=str)
-    df_test = pd.read_csv(data_args.test_file, sep='\t', dtype=str)
+    """
+    (已根据SOP进行标准化改造)
+    Loads train/validation/test data from standardized directories and determines
+    known classes based on fold parameters.
+    """
+    # 1. 根据SOP标准从YAML参数构建文件路径
+    origin_train_path = os.path.join(data_args.data_dir, data_args.dataset, 'origin_data', 'train.tsv')
+    origin_valid_path = os.path.join(data_args.data_dir, data_args.dataset, 'origin_data', 'dev.tsv')
+    origin_test_path = os.path.join(data_args.data_dir, data_args.dataset, 'origin_data', 'test.tsv')
 
-    # 从 test 集合里面的所有 label 中，挑选 known_ratio 比例的 labels 作为 ID，其余的 OOD
-    unique_labels = df_train.label.unique()
+    labeled_train_path = os.path.join(data_args.data_dir, data_args.dataset, 'labeled_data', str(data_args.labeled_ratio), 'train.tsv')
+    labeled_valid_path = os.path.join(data_args.data_dir, data_args.dataset, 'labeled_data', str(data_args.labeled_ratio), 'dev.tsv')
+
+    # 2. 使用pandas加载标准化的TSV文件
+    origin_train_df = pd.read_csv(origin_train_path, sep='\t', dtype=str)
+    origin_valid_df = pd.read_csv(origin_valid_path, sep='\t', dtype=str)
+    df_test = pd.read_csv(origin_test_path, sep='\t', dtype=str)
+
+    labeled_train_df = pd.read_csv(labeled_train_path, sep='\t', dtype=str)
+    labeled_valid_df = pd.read_csv(labeled_valid_path, sep='\t', dtype=str)
     
-    seen_labels = np.random.choice(unique_labels, int(len(unique_labels) * data_args.known_ratio), replace=False)
-
-    known_class = pd.read_csv(f'../../data/{data_args.data}/{data_args.data}_{data_args.known_ratio}/idx.txt', sep='\t')
-    known_class_list = known_class['node'].apply(lambda x: '_'.join(x.split(' '))).tolist()
+    # 3. 组合文本和标签信息，生成后续步骤所需的DataFrame
+    df_train = labeled_train_df
+    df_train['text'] = origin_train_df['text']
     
-    seen_labels = known_class_list
+    df_valid = labeled_valid_df
+    df_valid['text'] = origin_valid_df['text']
 
-    # df_train[..] 是在 pandas.DataFrame 做了一个 copy 操作，无论对 df_valid_oos、df_train_seen、df_train_seen 这些进行什么修改，都不会影响到原来的 DataFrame
+    # 4. (核心修改) 从标准化的.list文件加载已知类，替换掉旧的随机选择和idx.txt逻辑
+    known_label_path = os.path.join(
+        data_args.data_dir,
+        data_args.dataset,
+        'label',
+        f'fold{data_args.fold_num}',
+        f'part{data_args.fold_idx}',
+        f'label_known_{data_args.known_cls_ratio}.list'
+    )
+    seen_labels = pd.read_csv(known_label_path, header=None)[0].tolist()
+
+    # 5. (保留原逻辑) 使用新的 seen_labels 列表来筛选和划分数据
     df_train_seen: pd.DataFrame = df_train[df_train.label.isin(seen_labels)]
     df_valid_seen: pd.DataFrame = df_valid[df_valid.label.isin(seen_labels)]
     df_valid_oos: pd.DataFrame = df_valid[~df_valid.label.isin(seen_labels)]
 
     df_valid_oos.loc[:, "label"] = 'oos'
-
-    # df_test 可能本身也有 oos 数据，不过 oos label 肯定不在 unique_labels（训练集不可见 ood 数据）
-    # 所以这里的处理实际是等价于处理后（程序中运行的）的 ood 包含了 原来数据集里面的 oos label + unseen_labels
-
-    # 这里即使 df_test 含有 oos 也没啥问题，因为 seen_labels 和 unique_labels 一定没有 oos
     df_test.loc[~df_test.label.isin(seen_labels), "label"] = 'oos'
 
     df_valid_all = pd.concat([df_valid_seen, df_valid_oos])
 
+    # 6. (保留原逻辑) 将处理好的DataFrame转换为Hugging Face的Dataset对象
     data = {
         "train": Dataset.from_pandas(df_train_seen, preserve_index=False),
         "valid_seen": Dataset.from_pandas(df_valid_seen, preserve_index=False),
@@ -151,6 +176,5 @@ def load_datasets(data_args: DataTrainingArguments) -> DatasetDict:
         "test": Dataset.from_pandas(df_test, preserve_index=False),
     }
 
-    # Dict[str, Dataset]
     datasets = DatasetDict(data)
     return datasets

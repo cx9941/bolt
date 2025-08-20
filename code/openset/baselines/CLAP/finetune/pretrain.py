@@ -73,7 +73,7 @@ class PretrainModelManager:
             nb_tr_examples, nb_tr_steps = 0, 0
             self.centroids = None
             
-            for step, batch in enumerate(tqdm(data.k_positive_dataloader, desc="Pre-Train Iteration", mininterval=10)):
+            for step, batch in enumerate(tqdm(data.train_dataloader, desc="Pre-Train Iteration", mininterval=10)):
                 input_ids = batch['input_ids'].view(-1, args.max_seq_length).to(self.device)    
                 input_mask = batch['input_mask'].view(-1, args.max_seq_length).to(self.device)
                 segment_ids = batch['segment_ids'].view(-1, args.max_seq_length).to(self.device)
@@ -175,7 +175,7 @@ class PretrainModelManager:
         total_labels = torch.empty(0, dtype=torch.long).to(self.device)
 
         with torch.set_grad_enabled(False):
-            for batch in data.k_positive_dataloader:
+            for batch in data.train_dataloader:
                 input_ids = batch['input_ids'].view(-1, args.max_seq_length).to(self.device)
                 input_mask = batch['input_mask'].view(-1, args.max_seq_length).to(self.device)
                 segment_ids = batch['segment_ids'].view(-1, args.max_seq_length).to(self.device)

@@ -24,7 +24,7 @@ import logging
 import random
 import sys
 
-import fitlog
+# import fitlog
 from dataclasses import dataclass, field
 from sklearn.metrics import matthews_corrcoef
 from typing import Optional
@@ -157,17 +157,17 @@ class ModelArguments:
 
     train_pattern: str = field(default="further_pretrain")
 
-@dataclass
-class FitLogArguments:
-    #task: str = field(default='mrpc')
-    negative_num: int = field(default=96)
-    positive_num: int = field(default=3)
-    queue_size: int = field(default=32000)
-    top_k: int = field(default=20)
-    end_k: int = field(default=1)
-    m: float = field(default=0.999)
-    contrastive_rate_in_training: float = field(default=0.1)
-    contrastive_rate_in_inference: float = field(default=0.1)
+# @dataclass
+# class FitLogArguments:
+#     #task: str = field(default='mrpc')
+#     negative_num: int = field(default=96)
+#     positive_num: int = field(default=3)
+#     queue_size: int = field(default=32000)
+#     top_k: int = field(default=20)
+#     end_k: int = field(default=1)
+#     m: float = field(default=0.999)
+#     contrastive_rate_in_training: float = field(default=0.1)
+#     contrastive_rate_in_inference: float = field(default=0.1)
 
 
 def data_collator(features):
@@ -217,134 +217,80 @@ def main():
     # or by passing the --help flag to this script_v0.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments, FitLogArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
 
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         model_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args, fitlog_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+
     
 
     # model_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath('json/snips/0.25/0.json'))
 
-    results_path = './model_output/' + '_'.join([training_args.data, str(training_args.known_ratio), str(training_args.seed)]) + '.csv'
-    if os.path.exists(results_path):
-        exit()
+    # results_path = './model_output/' + '_'.join([training_args.data, str(training_args.known_ratio), str(training_args.seed)]) + '.csv'
+    # if os.path.exists(results_path):
+    #     exit()
 
     # model_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file='json/demo.json')
 
-    data_args.train_file = './data/' + training_args.data + '/train.tsv'
-    data_args.valid_file = './data/' + training_args.data + '/valid.tsv'
-    data_args.test_file = './data/' + training_args.data + '/test.tsv'
-    training_args.sample_file = data_args.train_file
-    training_args.max_length = data_args.max_seq_length
-    fitlog.set_log_dir(training_args.fitlog_dir)
-    fitlog_args_dict = {"seed": training_args.seed,
-                        "warmup_steps": training_args.warmup_steps}
+    # ========================================================================
+    # --- 全新的、符合SOP标准的数据加载与处理逻辑 (已更新为新参数名) ---
+    # ========================================================================
 
-    fitlog_args_name = [i for i in dir(fitlog_args) if i[0] != "_"]
-    for args_name in fitlog_args_name:
-        args_value = getattr(fitlog_args, args_name)
-        training_args.__dict__[args_name] = args_value
-        if args_value is not None:
-            fitlog_args_dict[args_name] = args_value
-    fitlog.add_hyper(fitlog_args_dict)
+    # 1. 根据SOP标准从YAML参数构建文件路径
+    origin_train_path = os.path.join(training_args.data_dir, training_args.dataset, 'origin_data', 'train.tsv')
+    origin_valid_path = os.path.join(training_args.data_dir, training_args.dataset, 'origin_data', 'dev.tsv')
+    origin_test_path = os.path.join(training_args.data_dir, training_args.dataset, 'origin_data', 'test.tsv')
+    
+    labeled_train_path = os.path.join(training_args.data_dir, training_args.dataset, 'labeled_data', str(training_args.labeled_ratio), 'train.tsv')
+    labeled_valid_path = os.path.join(training_args.data_dir, training_args.dataset, 'labeled_data', str(training_args.labeled_ratio), 'dev.tsv')
 
-    if (
-            os.path.exists(training_args.output_dir)
-            and os.listdir(training_args.output_dir)
-            and training_args.do_train
-            and not training_args.overwrite_output_dir
-    ):
-        raise ValueError(
-            f"Output directory ({training_args.output_dir}) already exists and is not empty. "
-            "Use --overwrite_output_dir to overcome."
-        )
+    # 2. 使用pandas加载标准化的TSV文件
+    origin_train_df = pd.read_csv(origin_train_path, sep='\t', dtype=str)
+    origin_valid_df = pd.read_csv(origin_valid_path, sep='\t', dtype=str)
+    df_test = pd.read_csv(origin_test_path, sep='\t', dtype=str)
 
-    # Setup logging
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO if is_main_process(training_args.local_rank) else logging.WARN,
+    labeled_train_df = pd.read_csv(labeled_train_path, sep='\t', dtype=str)
+    labeled_valid_df = pd.read_csv(labeled_valid_path, sep='\t', dtype=str)
+    
+    # 3. 组合文本和标签信息
+    df_train = labeled_train_df
+    df_train['text'] = origin_train_df['text']
+    
+    df_valid = labeled_valid_df
+    df_valid['text'] = origin_valid_df['text']
+
+    # 4. (核心修改) 从标准化的.list文件加载已知类
+    known_label_path = os.path.join(
+        training_args.data_dir,
+        training_args.dataset,
+        'label',
+        f'fold{training_args.fold_num}',
+        f'part{training_args.fold_idx}',
+        f'label_known_{training_args.known_cls_ratio}.list'
     )
+    seen_labels = pd.read_csv(known_label_path, header=None)[0].tolist()
 
-    # Log on each process the small summary:
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
-    )
-    # Set the verbosity to info of the Transformers logger (on main process only):
-    if is_main_process(training_args.local_rank):
-        transformers.utils.logging.set_verbosity_info()
-        transformers.utils.logging.enable_default_handler()
-        transformers.utils.logging.enable_explicit_format()
-    logger.info(f"Training/evaluation parameters {training_args}")
-
-    # Set seed before initializing model.
-    set_seed(training_args.seed)
-
-    # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
-    # or specify a GLUE benchmark task (the dataset will be downloaded automatically from the datasets Hub).
-    #
-    # For CSV/JSON files, this script_v0 will use as labels the column called 'label' and as pair of sentences the
-    # sentences in columns called 'sentence1' and 'sentence2' if such column exists or the first two columns not named
-    # label if at least two columns are provided.
-    #
-    # If the CSVs/JSONs contain only one non-label column, the script_v0 does single sentence classification on this
-    # single column. You can easily tweak this behavior (see below)
-    #
-    # In distributed training, the load_dataset function guarantee that only one local process can concurrently
-    # download the dataset.
-    # if data_args.task_name is not None:
-    #     # Downloading and loading a dataset from the hub.
-    #     datasets = load_dataset("glue", data_args.task_name)
-    # elif data_args.train_file.endswith(".csv"):
-    #     # Loading a dataset from local csv files
-    #     # test
-    #     #with open(data_args.train_file, 'r', encoding='utf-8') as f:
-    #     #    print(len(f.readlines()))
-    #     if training_args.do_predict:
-    #         datasets = load_dataset(
-    #             "csv", data_files={"train": data_args.train_file, "validation": data_args.validation_file,
-    #                                "test": data_args.test_file, "valid_oos":data_args.valid_oos_file}, sep="\t"
-    #         )
-    #     else:
-    #         datasets = load_dataset(
-    #             "csv", data_files={"train": data_args.train_file, "validation": data_args.validation_file}, sep="\t"
-    #         )
-    # else:
-    #     # Loading a dataset from local json files
-    #     datasets = load_dataset(
-    #         "json", data_files={"train": data_args.train_file, "validation": data_args.validation_file}
-    #     )
-
-    # See more about loading any type of standard or custom dataset at
-    # https://huggingface.co/docs/datasets/loading_datasets.html.
-    df_train = pd.read_csv(data_args.train_file, sep='\t', dtype=str)
-    df_valid = pd.read_csv(data_args.valid_file, sep='\t', dtype=str)
-    df_test = pd.read_csv(data_args.test_file, sep='\t', dtype=str)
-
-    # unique_labels = np.array(list(set(df_test.label.unique()) & set(df_train.label.unique())))
-    # seen_labels = np.random.choice(unique_labels, int(len(unique_labels)*training_args.known_ratio), replace=False)
-
-    seen_labels = pd.read_csv(f'../../data/{training_args.data}/{training_args.data}_{training_args.known_ratio}/idx.txt', sep='\t')
-    seen_labels['node'] = seen_labels['node'].apply(lambda x: x.replace(' ', '_'))
-    seen_labels = np.array(seen_labels['node'])
-    seen_labels
-
+    # 5. (保留原逻辑) 使用新的 seen_labels 列表来筛选和划分数据
     df_train_seen = df_train[df_train.label.isin(seen_labels)]
     df_valid_seen = df_valid[df_valid.label.isin(seen_labels)]
     df_valid_oos = df_valid[~df_valid.label.isin(seen_labels)]
     df_valid_oos.loc[:, "label"] = 'oos'
     df_test.loc[~df_test.label.isin(seen_labels), "label"] = 'oos'
 
+    # 6. (保留原逻辑) 将处理好的DataFrame转换为Hugging Face的Dataset对象
     data = dict()
     data["train"] = Dataset.from_pandas(df_train_seen, preserve_index=False)
     data["valid_seen"] = Dataset.from_pandas(df_valid_seen, preserve_index=False)
     data["valid_oos"] = Dataset.from_pandas(df_valid_oos, preserve_index=False)
     data["test"] = Dataset.from_pandas(df_test, preserve_index=False)
     datasets = DatasetDict(data)
+
+    # ========================================================================
+    # --- 数据处理逻辑改造完成 ---
+    # ========================================================================
 
     # Labels
     if data_args.task_name is not None: # False
@@ -411,7 +357,8 @@ def main():
         config.model_name = model_args.model_name_or_path
         config.negative_num = training_args.negative_num
         config.positive_num = training_args.positive_num
-        config.m = fitlog_args.m
+        # config.m = fitlog_args.m
+        config.m = training_args.m
         config.queue_size = training_args.queue_size
         config.train_multi_head = training_args.train_multi_head
         config.contrastive_rate_in_training = training_args.contrastive_rate_in_training
@@ -443,18 +390,11 @@ def main():
             logger.warning("your model should in list [original_model moco roberta_moco knn_bert knn_roberta scl_model]")
 
     # Preprocessing the datasets
-    if data_args.task_name is not None: # False
-        sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
-    else:
-        # Again, we try to have some nice defaults but don't hesitate to tweak to your use case.
-        non_label_column_names = [name for name in datasets["train"].column_names if name != "label"]
-        if "sentence1" in non_label_column_names and "sentence2" in non_label_column_names:
-            sentence1_key, sentence2_key = "sentence1", "sentence2"
-        else:
-            if len(non_label_column_names) >= 2:
-                sentence1_key, sentence2_key = non_label_column_names[:2]
-            else:
-                sentence1_key, sentence2_key = non_label_column_names[0], None
+    # --- 修正：绕过脆弱的自动列名检测，直接指定文本列 ---
+    # 我们的数据集是单句分类，文本列永远是 'text'
+    sentence1_key, sentence2_key = "text", None
+    logger.info(f"Set sentence key to: {sentence1_key}")
+    # --- 修正结束 ---
 
     # Padding strategy
     if data_args.pad_to_max_length:

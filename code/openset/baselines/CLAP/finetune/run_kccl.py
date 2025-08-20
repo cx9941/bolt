@@ -95,11 +95,11 @@ class ModelManager:
 
     def save_adbes_model(self, args, model, tokenizer):
         save_model = model.module if hasattr(model, 'module') else model
-        model_file = os.path.join(args.adbes_model_path, WEIGHTS_NAME)
-        model_config_file = os.path.join(args.adbes_model_path, CONFIG_NAME)
+        model_file = os.path.join(args.pretrain_model_path, WEIGHTS_NAME)
+        model_config_file = os.path.join(args.pretrain_model_path, CONFIG_NAME)
         torch.save(save_model.state_dict(), model_file)
         save_model.config.to_json_file(model_config_file)
-        tokenizer.save_vocabulary(args.adbes_model_path)
+        tokenizer.save_vocabulary(args.pretrain_model_path)
 
     def evaluation(self, args, data, mode="eval"):
         self.model.eval()
@@ -113,9 +113,9 @@ class ModelManager:
             dataloader = data.eval_dataloader
         elif mode == 'test':
             dataloader = data.test_dataloader
-            self.delta = torch.load(os.path.join(args.adbes_model_path, 'best_deltas.pt'))
-            self.centroids = torch.load(os.path.join(args.adbes_model_path, 'best_centroids.pt'))
-            print('load the best delta and centroids from path: {}'.format(args.adbes_model_path))
+            self.delta = torch.load(os.path.join(args.pretrain_model_path, 'best_deltas.pt'))
+            self.centroids = torch.load(os.path.join(args.pretrain_model_path, 'best_centroids.pt'))
+            print('load the best delta and centroids from path: {}'.format(args.pretrain_model_path))
         else:
             raise Exception('the mode of evaluation is not required.')
 
@@ -183,7 +183,7 @@ class ModelManager:
 
             df = pd.DataFrame(
                 {'text': text_list, 'true': self.true_labels, 'pred': self.predictions, 'pred_': predictions_, 'distance': cos_distance, 'delta': cos_delta, 'flag': flag})
-            outpath = os.path.join(args.adbes_model_path, 'pred_{}.xlsx'.format(args.metric_type))
+            outpath = os.path.join(args.pretrain_model_path, 'pred_{}.xlsx'.format(args.metric_type))
             df.to_excel(outpath, index=False, header=True)
             print('save to {}'.format(outpath))
 
@@ -218,7 +218,7 @@ class ModelManager:
 
             df = pd.DataFrame(
                 {'text': text_list, 'true': self.true_labels, 'pred': self.predictions, 'pred_': predictions_, 'distance': cos_distance, 'delta': cos_delta, 'flag': flag_mode(self.true_labels, self.predictions, data)})
-            outpath = os.path.join(args.adbes_model_path, 'pred_mod.xlsx')
+            outpath = os.path.join(args.pretrain_model_path, 'pred_mod.xlsx')
             df.to_excel(outpath, index=False, header=True)
             print('save to {}'.format(outpath))
 
@@ -265,7 +265,7 @@ class ModelManager:
         elif args.centroids == 1:
             self.centroids = self.model.weight
             print('use self.model.weight as centroids: {}'.format(self.centroids.shape))
-            torch.save(self.centroids, os.path.join(args.adbes_model_path, 'model_weight_src.pt'))
+            torch.save(self.centroids, os.path.join(args.pretrain_model_path, 'model_weight_src.pt'))
 
         wait = 0
         best_delta, best_centroids = None, None
@@ -308,10 +308,10 @@ class ModelManager:
                     best_centroids = self.centroids
                     self.save_adbes_model(args, self.model, self.tokenizer)
                     print(classification)
-                    print('save the best adbes models epoch: {}, save dir: {}'.format(epoch, args.adbes_model_path))
-                    torch.save(best_centroids, os.path.join(args.adbes_model_path, 'best_centroids.pt'))
-                    torch.save(best_delta, os.path.join(args.adbes_model_path, 'best_deltas.pt'))
-                    print('finish to save best_deltas.npy and best_centroids.npy to: {}'.format(args.adbes_model_path))
+                    print('save the best adbes models epoch: {}, save dir: {}'.format(epoch, args.pretrain_model_path))
+                    torch.save(best_centroids, os.path.join(args.pretrain_model_path, 'best_centroids.pt'))
+                    torch.save(best_delta, os.path.join(args.pretrain_model_path, 'best_deltas.pt'))
+                    print('finish to save best_deltas.npy and best_centroids.npy to: {}'.format(args.pretrain_model_path))
                 else:
                     wait += 1
                     if wait >= args.wait_patient:
@@ -328,10 +328,10 @@ class ModelManager:
                     
                     self.save_adbes_model(args, self.model, self.tokenizer)
                     print(classification)
-                    print('save the best adbes models epoch: {}, save dir: {}'.format(epoch, args.adbes_model_path))
-                    torch.save(best_centroids, os.path.join(args.adbes_model_path, 'best_centroids.pt'))
-                    torch.save(best_delta, os.path.join(args.adbes_model_path, 'best_deltas.pt'))
-                    print('finish to save best_deltas.npy and best_centroids.npy to: {}'.format(args.adbes_model_path))
+                    print('save the best adbes models epoch: {}, save dir: {}'.format(epoch, args.pretrain_model_path))
+                    torch.save(best_centroids, os.path.join(args.pretrain_model_path, 'best_centroids.pt'))
+                    torch.save(best_delta, os.path.join(args.pretrain_model_path, 'best_deltas.pt'))
+                    print('finish to save best_deltas.npy and best_centroids.npy to: {}'.format(args.pretrain_model_path))
                 else:
                     wait += 1
                     if wait >= args.wait_patient:
@@ -377,7 +377,7 @@ class ModelManager:
         values = list(results.values())
 
         file_name = 'results.csv'
-        results_path = os.path.join(args.adbes_model_path, file_name)
+        results_path = os.path.join(args.pretrain_model_path, file_name)
 
         if not os.path.exists(results_path):
             ori = []
@@ -398,11 +398,11 @@ class ModelManager:
 
 
 def reload_adbes_model(args):
-    config = BertConfig.from_json_file(os.path.join(args.adbes_model_path, 'config.json'))
-    tokenizer = BertTokenizer.from_pretrained(args.adbes_model_path)
+    config = BertConfig.from_json_file(os.path.join(args.pretrain_model_path, 'config.json'))
+    tokenizer = BertTokenizer.from_pretrained(args.pretrain_model_path)
     
-    model = BertForModel.from_pretrained(args.adbes_model_path, cache_dir="", num_labels=data.num_labels, model_type=args.model_type)
-    output_model_file = os.path.join(args.adbes_model_path, WEIGHTS_NAME)
+    model = BertForModel.from_pretrained(args.pretrain_model_path, cache_dir="", num_labels=data.num_labels, model_type=args.model_type)
+    output_model_file = os.path.join(args.pretrain_model_path, WEIGHTS_NAME)
     model.load_state_dict(torch.load(output_model_file))
     return model, tokenizer
 
@@ -426,46 +426,62 @@ if __name__ == '__main__':
     start_time = datetime.now()
 
     print(datetime.now(), ' Data and Parameters Initialization...')
-    parser = init_model()
+    # 1. 解析参数
+    # init_model 来自我们已经改造过的 init_parameter.py
+    # 但为了兼容我们的.sh脚本，我们需要在这里重新定义argparse
+    parser = argparse.ArgumentParser()
+    # 添加所有在 1_finetune.yaml 中定义的参数
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--gpu_id", type=str, default="0")
+    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--data_dir", type=str, required=True)
+    parser.add_argument("--known_cls_ratio", type=float, required=True)
+    parser.add_argument("--labeled_ratio", type=float, required=True)
+    parser.add_argument("--fold_idx", type=int, required=True)
+    parser.add_argument("--fold_num", type=int, required=True)
+    parser.add_argument("--bert_base_model", type=str, required=True)
+    parser.add_argument("--max_seq_length", type=int, default=128)
+    parser.add_argument("--pretrain_lr", type=float, required=True)
+    parser.add_argument("--train_batch_size", type=int, required=True)
+    parser.add_argument("--eval_batch_size", type=int, required=True)
+    parser.add_argument("--num_pretrain_epochs", type=float, required=True)
+    parser.add_argument("--kccl_k", type=int, required=True)
+    parser.add_argument("--temperature", type=float, required=True)
+    parser.add_argument("--KCCL_LOSS_LAMBDA", type=float, required=True)
+    parser.add_argument("--CE_LOSS_LAMBDA", type=float, required=True)
+    parser.add_argument("--metric_type", type=int, required=True)
+    parser.add_argument("--output_dir", type=str, required=True)
+    # 添加一个旧代码依赖但我们YAML里没有的参数，给个默认值
+    parser.add_argument("--model_type", type=str, default='bert')
+    parser.add_argument("--neg_num", type=int, default=5)
+
     args = parser.parse_args()
-    args.save_version = '{}{}_m{}_l{}_d{}_p{}_te{}_t{}_{}_s{}_sd{}_{}_NEG'.format(args.dataset[0], str(args.known_cls_ratio), str(args.model_type), str(args.pretrain_loss_type), str(args.metric_type), str(args.kccl_k), str(args.temperature), str(args.KCCL_LOSS_LAMBDA), str(args.CE_LOSS_LAMBDA), str(args.seed), str(args.seed_data), args.adbes_type)
-    args.pretrain_model_path = create_model_dir(args, 'pretrain')
-    if args.save_path_suffix == '':
-        args.adbes_model_path = create_model_dir(args, 'train')
-    else:
-        args.adbes_model_path = create_model_dir(args, 'train_nopre')
 
-    sys.stdout = Logger('train.log', path=args.adbes_model_path)
+    # 2. 设置标准化的输出路径
+    args.pretrain_model_path = os.path.join(args.output_dir, 'finetuned_model')
+    os.makedirs(args.pretrain_model_path, exist_ok=True)
 
+    # 3. 设置日志
+    sys.stdout = Logger('train.log', path=args.pretrain_model_path)
     print('start_time:{}'.format(start_time))
     print('args: ', args)
 
+    # 4. 加载数据
     data = Data(args)
     print(datetime.now(), ' Data and Parameters finished loading!')
 
+    # 5. 设置随机种子
     set_seed_all(args.seed)
+
+    # 6. 检查模型是否存在，如果不存在，则进行训练
+    #    PretrainModelManager 来自 pretrain.py，它负责训练并保存最好的模型
     if not os.path.exists(os.path.join(args.pretrain_model_path, 'pytorch_model.bin')):
         print(datetime.now(), ' Pre-training begin...')
         manager_p = PretrainModelManager(args, data)
         manager_p.train(args, data)
         print(datetime.now(), ' Pre-training finished!')
-
-    print(datetime.now(), ' Pre-training begin loading...')
-    manager_p = PretrainModelManager(args, data)
-    pretrained_model, pretrained_tokenizer, best_pretrained_acc = manager_p.reload_model(args)
-    print(datetime.now(), ' Pre-training finished loading!')
-
-    if not os.path.exists(os.path.join(args.adbes_model_path, 'pytorch_model.bin')):
-        manager = ModelManager(args=args, data=data, pretrained_model=pretrained_model, pretrained_tokenizer=pretrained_tokenizer, pretrained_acc=best_pretrained_acc)
-        print(datetime.now(), ' Training begin...')
-        manager.train(args, data)
-        print(datetime.now(), ' Training finished!')
     else:
-        print(datetime.now(), ' Training begin loading...')
-        train_model, train_tokenizer = reload_adbes_model(args)
-        manager = ModelManager(args=args, data=data, pretrained_model=train_model, pretrained_tokenizer=train_tokenizer, pretrained_acc=best_pretrained_acc)
-        print(datetime.now(), ' Training finished loading!')
-
-    print(datetime.now(), ' Evaluation begin...')
-    manager.evaluation(args, data, mode="test")
-    print(datetime.now(), ' Evaluation finished!')
+        print(f"Model already exists in {args.pretrain_model_path}, skipping training.")
+    
+    # 第一阶段的任务到此结束
+    print(f"\n---> STAGE 1 Finetuning COMPLETED. Model saved to {args.pretrain_model_path}")

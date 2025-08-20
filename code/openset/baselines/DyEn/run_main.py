@@ -43,8 +43,9 @@ def main():
     training_args: TrainingArguments
     fitlog_args: FitLogArguments
 
-    assert len(sys.argv) == 2 and sys.argv[1].endswith(".json")
-    other_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    # assert len(sys.argv) == 2 and sys.argv[1].endswith(".json")
+    # other_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    other_args, data_args, training_args, fitlog_args = parser.parse_args_into_dataclasses()
 
     # # TODO: DEBUG
     # training_args.do_train = False
@@ -61,44 +62,31 @@ def main():
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    # 设置文件、模型、metrics 保存（能追溯）
-    if training_args.do_train:
-        adv_args = f'{other_args.adv_k}{other_args.adv_lr}{other_args.adv_init_mag}'
+    # 直接使用我们YAML中定义的标准输出路径
+    model_output_root = training_args.output_dir
+    os.makedirs(model_output_root, exist_ok=True)
 
-        if other_args.scale == other_args.scale_ood:
-            model_output_root = f'./model_output/{data_args.data}_{data_args.known_ratio}/ad{adv_args}_lr{training_args.learning_rate:.1e}__epoch{other_args.supcont_pre_epoches}__loss{other_args.loss_type}' \
-                                f'__batchsize{training_args.per_device_train_batch_size}__lambda{other_args.diversity_loss_weight}__scale{other_args.scale}/'
-        else:
-            model_output_root = f'./model_output/{data_args.data}_{data_args.known_ratio}/ad{adv_args}_lr{training_args.learning_rate:.1e}__epoch{other_args.supcont_pre_epoches}__loss{other_args.loss_type}' \
-                                f'__batchsize{training_args.per_device_train_batch_size}__lambda{other_args.diversity_loss_weight}__scale{other_args.scale}{other_args.scale_ood}/'
-        if not os.path.exists(model_output_root):
-            os.makedirs(model_output_root)
-    else:
-        # 所以这里要求的是 pt 文件，和 json 配置文件必须同一个文件夹里面
-        # dirname 去掉文件名，返回目录
-        model_output_root = os.path.dirname(os.path.abspath(sys.argv[1]))
+    # if training_args.do_train:
+    #     json_file_name = '_' + '_'.join([data_args.dataset, str(data_args.known_cls_ratio), str(training_args.seed)]) + '.json'
+    #     shutil.copy2(os.path.abspath(sys.argv[1]), os.path.join(model_output_root, json_file_name))
 
-    if training_args.do_train:
-        json_file_name = '_' + '_'.join([data_args.data, str(data_args.known_ratio), str(training_args.seed)]) + '.json'
-        shutil.copy2(os.path.abspath(sys.argv[1]), os.path.join(model_output_root, json_file_name))
+    # ################################################################################
+    # # 设置 fitlog
+    # fitlog.set_log_dir(other_args.fitlog_dir)
+    # fitlog_args_dict = {
+    #     "seed": training_args.seed,
+    #     "warmup_steps": training_args.warmup_steps,
+    #     "task_name": f'{data_args.data}-{data_args.known_ratio}-{training_args.seed}'
 
-    ################################################################################
-    # 设置 fitlog
-    fitlog.set_log_dir(other_args.fitlog_dir)
-    fitlog_args_dict = {
-        "seed": training_args.seed,
-        "warmup_steps": training_args.warmup_steps,
-        "task_name": f'{data_args.data}-{data_args.known_ratio}-{training_args.seed}'
+    # }
+    # fitlog_args_name = [i for i in dir(fitlog_args) if i[0] != "_"]
+    # for args_name in fitlog_args_name:
+    #     args_value = getattr(fitlog_args, args_name)
+    #     if args_value is not None:
+    #         fitlog_args_dict[args_name] = args_value
+    # fitlog.add_hyper(fitlog_args_dict)
 
-    }
-    fitlog_args_name = [i for i in dir(fitlog_args) if i[0] != "_"]
-    for args_name in fitlog_args_name:
-        args_value = getattr(fitlog_args, args_name)
-        if args_value is not None:
-            fitlog_args_dict[args_name] = args_value
-    fitlog.add_hyper(fitlog_args_dict)
-
-    ################################################################################
+    # ################################################################################
 
     # Setup logging
     logging.basicConfig(
@@ -160,7 +148,7 @@ def main():
     #####################################################################################
     # 训练
 
-    model_file_name = '_' + '_'.join([data_args.data, str(data_args.known_ratio), str(training_args.seed)]) + '.pt'
+    model_file_name = '_' + '_'.join([data_args.dataset, str(data_args.known_cls_ratio), str(training_args.seed)]) + '.pt'
 
     if other_args.adv_k > 0:
         train_step = train_step_freelb.FreeLB(
@@ -184,29 +172,23 @@ def main():
         train_step=train_step
     )
     if training_args.do_train:
-        file_postfix = '_'.join([data_args.data, str(data_args.known_ratio), str(training_args.seed)]) + '.csv'
+        file_postfix = '_'.join([data_args.dataset, str(data_args.known_cls_ratio), str(training_args.seed)]) + '.csv'
 
-        metrc_file = os.path.join(model_output_root, f'energy_{file_postfix}')
-
-        if not os.path.exists(metrc_file):
-            trainer.train_ce_loss()
-        else:
-            exit()
+        trainer.train_ce_loss()
    
     else:
         model.load_state_dict(torch.load(os.path.join(model_output_root, model_file_name)))
         model.to(training_args.device)
 
     ################################################################################################
-    # Evaluation
+    # Evaluation (已根据SOP进行标准化改造 - 最终版)
     if training_args.do_predict:
-        file_postfix = '_'.join([data_args.data, str(data_args.known_ratio), str(training_args.seed)]) + '.csv'
+        from sklearn.metrics import classification_report
+        import pandas as pd
 
-        # # TODO: remove
-        # model_output_root = f'./model_output/tmp/{other_args.scale}_{other_args.scale_ood}'
-        # if not os.path.exists(model_output_root):
-        #     os.makedirs(model_output_root)
-
+        # --- 步骤1：重新定义 kwargs 字典，为所有评估器准备通用参数 ---
+        file_postfix = '_'.join([data_args.dataset, str(data_args.known_cls_ratio), str(training_args.seed)]) + '.csv'
+        
         valid_all_dataloader = trainer.get_eval_dataloader(datasets['valid_all'])
         valid_dataloader = trainer.get_eval_dataloader(datasets['valid_seen'])
         train_dataloader = trainer.get_train_dataloader()
@@ -218,7 +200,7 @@ def main():
             model=model,
             root=model_output_root,
             file_postfix=file_postfix,
-            dataset_name=data_args.data,
+            dataset_name=data_args.dataset, # 使用标准化的参数名
             device=training_args.device,
             num_labels=num_all_labels,
             tuning='valid',
@@ -231,24 +213,65 @@ def main():
             model_forward_cache=model_forward_cache
         )
 
-        evaluator = my_eval.KnnEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.MspEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.MaxLogitEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.EnergyEvaluator(temperature=1, **kwargs)
-        evaluator.eval()
-        evaluator = my_eval.EntropyEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.OdinEvaluator(temperature=100, **kwargs)
-        evaluator.eval()
-        evaluator = my_eval.MahaEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.LofCosineEvaluator(**kwargs)
-        evaluator.eval()
-        evaluator = my_eval.LofEuclideanEvaluator(**kwargs)
-        evaluator.eval()
+        # --- 步骤2：循环运行每一种评估方法 ---
+        evaluator_classes = [
+            (my_eval.KnnEvaluator, "knn"),
+            (my_eval.MspEvaluator, "msp"),
+            (my_eval.MaxLogitEvaluator, "maxLogit"),
+            (my_eval.EnergyEvaluator, "energy"),
+            (my_eval.EntropyEvaluator, "entropy"),
+            (my_eval.OdinEvaluator, "odin"),
+            (my_eval.MahaEvaluator, "maha"),
+            (my_eval.LofCosineEvaluator, "lof_cosine"),
+            (my_eval.LofEuclideanEvaluator, "lof_euclidean")
+        ]
+        
+        id_to_label = {i: v for i, v in enumerate(label_list)}
+
+        for eval_class, method_name in evaluator_classes:
+            print(f"\n---> Running Evaluation for method: {method_name}")
+            
+            # 修正：不再修改共享的kwargs，而是只在需要时传递额外参数
+            if method_name in ["energy", "odin"]:
+                temp = 1 if method_name == "energy" else 100
+                evaluator = eval_class(temperature=temp, **kwargs)
+            else:
+                evaluator = eval_class(**kwargs)
+            
+            y_pred_ids, y_true_ids = evaluator.eval()
+            
+            y_true_labels = [id_to_label.get(label_id, 'oos') for label_id in y_true_ids]
+            y_pred_labels = [id_to_label.get(label_id, 'oos') for label_id in y_pred_ids]
+
+            report = classification_report(y_true_labels, y_pred_labels, output_dict=True, zero_division=0)
+            
+            final_results = {}
+            final_results['dataset'] = data_args.dataset
+            final_results['seed'] = training_args.seed
+            final_results['known_cls_ratio'] = data_args.known_cls_ratio
+            final_results['ood_method'] = method_name
+            final_results['ACC'] = report['accuracy']
+            final_results['F1'] = report['macro avg']['f1-score']
+            
+            seen_class_labels = [l for l in label_list if l != 'oos']
+            known_f1_scores = [report[label]['f1-score'] for label in seen_class_labels if label in report]
+            final_results['K-F1'] = sum(known_f1_scores) / len(known_f1_scores) if known_f1_scores else 0.0
+            final_results['N-F1'] = report['oos']['f1-score'] if 'oos' in report else 0.0
+
+            metric_dir = os.path.join(training_args.output_dir, 'metrics')
+            os.makedirs(metric_dir, exist_ok=True)
+            results_path = os.path.join(metric_dir, 'results.csv')
+
+            if not os.path.exists(results_path):
+                df_to_save = pd.DataFrame([final_results])
+                df_to_save.to_csv(results_path, index=False)
+            else:
+                existing_df = pd.read_csv(results_path)
+                new_row_df = pd.DataFrame([final_results])
+                updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+                updated_df.to_csv(results_path, index=False)
+            
+            print(f"Saved results for {method_name} to {results_path}")
 
     return None
 

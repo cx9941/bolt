@@ -334,67 +334,41 @@ class Evaluator:
             # 对每一层的 threshold，排序该层的正常度打分 cur_layer_scores，取较低的分数，作为 threshold
             return self.search_threshold_by_valid(valid_score)
 
-    def _write(self, res: Dict[str, Any]):
-        """
-        写入数据
-        :param res:
-        :return:
-        """
-        if os.path.exists(self.output_file):
-            df = pd.read_csv(self.output_file)
-            new = pd.DataFrame(res, index=[1])
-            df = df._append(new, ignore_index=True)
-            df.to_csv(self.output_file, index=False)
-        else:
-            new = [res]
-            df = pd.DataFrame(new)
-            df.to_csv(self.output_file, index=False)
-        print(res)
+    # def _write(self, res: Dict[str, Any]):
+    #     """
+    #     写入数据
+    #     :param res:
+    #     :return:
+    #     """
+    #     if os.path.exists(self.output_file):
+    #         df = pd.read_csv(self.output_file)
+    #         new = pd.DataFrame(res, index=[1])
+    #         df = df._append(new, ignore_index=True)
+    #         df.to_csv(self.output_file, index=False)
+    #     else:
+    #         new = [res]
+    #         df = pd.DataFrame(new)
+    #         df.to_csv(self.output_file, index=False)
+    #     print(res)
 
     def eval(self):
-        #######################################################################################################
-        # 把 test 数据集放入 model，
-        #             运行 self.predict_ind_labels 完后，可以得到 test_scores（x_i 正常度打分） 和 test_preds（预测的 ind 的 labels） 和 test_labels（ground truth labels，包含 ood）
-        #             设法找到 test_scores 这个正常度打分中的 ind 和 ood 分割的阈值，
-        #             test_preds 中，若某个 x_i 正常度过低，覆写为 OOD 这个 label
-
-        # shape: [layers_nums, N,]
-        # score[layer_index, :] 表示第 layer_index 层的那个正常度打分模型，给每个 x_i 的对应生成特征打的分数，越小表示越可能异常
-
-        # 利用 argmax probability/logits 得到 predict_ind_labels，这里先假设都是 IND 数据
-        # shape: [layers_nums, N]
-        # preds[layer_index, :] 表示利用第 layer_index 层的模型输出，预测的 ind 的 labels
-
-        # shape: [N] torch.int64  ground truth 的 labels（包含 ood）
+        """
+        (已根据SOP进行标准化改造)
+        不再计算指标或保存文件，仅执行模型推断并返回最核心的预测结果和真实标签。
+        """
+        # 运行模型推断，得到每一层的分数、预测和真实标签
         test_scores, test_preds, test_labels = self.predict_ind_labels(self.test_dataloader)
 
-        # shape: [layers_nums]; 每层的最佳 threshold（仅用该层的相关输出，找该层的最佳 threshold，使得 ind 和 ood 相关指标都比较好）
+        # 获取每一层的最优阈值
         threshold_score = self.get_threshold_score(self.tuning)
+        # 根据阈值，将分数过低的预测修正为OOD类别
         test_preds[test_scores < threshold_score.view(-1, 1)] = self.num_labels_IND
 
-        # test_labels: shape: [N]; torch.int64  ground truth 的 labels
-        # test_pred: shape: [layers_nums, N]; 根据每层的输出结果，结合正常程度之类的打分，预测的 ind 和 ood 的 labels
-        labels, preds = test_labels, test_preds
+        # 使用PABEE的集成策略，得到最终的单层预测结果
+        final_pred, _ = self.get_pabee_pred(test_preds)
 
-        # 每层的 threshold 处理没有干扰，所以 early exit 时候，我们可以当作后面的层，对应的模型没有继续跑过，同时 threshold 这些也没跑过
-        esm_pred, esm_speedup = self.get_ensemble_pred(preds)
-        pabee_pred, pabee_speedup = self.get_pabee_pred(preds)
-        random_pred, random_speedup = self.get_random_pred(preds)
-
-        #######################################################################################################
-        # 写入同一个文件
-        print(f'{self.METHOD}: ')
-        for layer_index in range(len(preds)):
-            results = {'strategy': 'each_layer', 'layer': layer_index+1, 'speedup': 1.0, 'tuning': self.tuning, 'scale': f'{self.scale_ind}+{self.scale_ood}', **F_measure(preds[layer_index], labels)}
-            self._write(results)
-        results = {'strategy': 'esm', 'layer': -1, 'speedup': esm_speedup, 'tuning': self.tuning, 'scale': f'{self.scale_ind}+{self.scale_ood}', **F_measure(esm_pred, labels)}
-        self._write(results)
-        results = {'strategy': 'pabee', 'layer': -1, 'speedup': pabee_speedup, 'tuning': self.tuning, 'scale': f'{self.scale_ind}+{self.scale_ood}', **F_measure(pabee_pred, labels)}
-        self._write(results)
-        results = {'strategy': 'random', 'layer': -1, 'speedup': random_speedup, 'tuning': self.tuning, 'scale': f'{self.scale_ind}+{self.scale_ood}', **F_measure(random_pred, labels)}
-        self._write(results)
-
-        print('#' * 80)
+        # 返回最终的预测标签和真实标签，供主程序使用
+        return final_pred.cpu().numpy(), test_labels.cpu().numpy()
 
     def auc(self):
         """
@@ -413,7 +387,7 @@ class Evaluator:
             results = {'METRIC': self.METHOD, 'tuning': self.tuning, 'layer': layer_index + 1, **utils.au_sklearn(
                 self.num_labels_IND, y_true=utils.tensor2numpy(test_labels), y_prob=utils.tensor2numpy(test_scores[layer_index])
             )}
-            self._write(results)
+            # self._write(results)
 
         print('#' * 80)
 

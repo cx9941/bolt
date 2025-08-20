@@ -1,0 +1,44 @@
+# KnnCon 方法的通用配置模板
+# ----------------------------------
+
+# --- 基础设置 ---
+seed: 0
+gpu_id: "0" # 注意：KnnCon代码不直接使用gpu_id, 需在trainer.py中手动指定device
+
+# --- 数据与任务设置 ---
+dataset: "banking"       # 对应 training_args.py 中的 data
+data_dir: "./data"
+known_cls_ratio: 0.25  # 对应 training_args.py 中的 known_ratio
+labeled_ratio: 1.0     # (我们的标准参数，KnnCon未使用，但保留)
+fold_idx: 0            # (我们的标准参数)
+fold_num: 5            # (我们的标准参数)
+max_seq_length: 128    # 对应 data_args.py 中的 max_seq_length
+
+# --- 模型与训练设置 ---
+# 路径设置
+model_name_or_path: "./pretrained_models/bert-base-uncased"
+
+# 训练超参数 (从 training_args.py 提取)
+do_train: true
+do_eval: true
+do_predict: true
+num_train_epochs: 3.0
+per_device_train_batch_size: 16
+per_device_eval_batch_size: 16
+learning_rate: 5e-5
+weight_decay: 0.0001
+warmup_steps: 0
+load_model_pattern: "knn_bert" # KnnCon的核心模式
+
+# KnnCon 特定参数 (从 training_args.py 和 fitlog_args.py 提取)
+top_k: 20
+end_k: 1
+m: 0.999 # MoCo momentum
+queue_size: 32000
+contrastive_rate_in_training: 0.1
+temperature: 0.3
+supcont_pre_epoches: 2 
+
+# --- 输出目录设置 ---
+output_dir: "./outputs/openset/knncon"
+overwrite_output_dir: true

@@ -2,36 +2,46 @@ import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from keras.backend import set_session
+# from keras.backend import set_session
 import numpy as np
 import random as rn
+import os
 
 
 
 def set_allow_growth(device="0"):
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-    config.gpu_options.visible_device_list=device
-    sess = tf.Session(config=config)
-    set_session(sess)  # set this TensorFlow session as the default session for Keras
+    """
+    (已修正为TF2.x版本)
+    使用 TensorFlow 2.x 的方式设置GPU，允许内存增长。
+    """
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
 
-def load_data(dataset):
-    texts = []
-    labels = []
-    partition_to_n_row = {}
-    for partition in ['train', 'valid', 'test']:
-        lines = open("./data/" + dataset + "/" + partition + ".seq.in", 'r').readlines()
-        label = open("./data/" + dataset + "/" + partition + ".label", 'r').readlines()
-        partition_to_n_row[partition] = len(lines)
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"GPU memory growth set to True for devices: {gpus}")
+        except RuntimeError as e:
+            print(e)
 
-        texts.extend(lines)
-        labels.extend(label)
+# def load_data(dataset):
+#     texts = []
+#     labels = []
+#     partition_to_n_row = {}
+#     for partition in ['train', 'valid', 'test']:
+#         lines = open("./data/" + dataset + "/" + partition + ".seq.in", 'r').readlines()
+#         label = open("./data/" + dataset + "/" + partition + ".label", 'r').readlines()
+#         partition_to_n_row[partition] = len(lines)
 
-    df = pd.DataFrame([texts, labels]).T
-    df.columns = ['text', 'label']
-    df['label'] = df['label'].apply(lambda x: x.replace('\n', ''))
-    df['text'] = df['text'].apply(lambda x: x.replace('\n', ''))
-    return df, partition_to_n_row
+#         texts.extend(lines)
+#         labels.extend(label)
+
+#     df = pd.DataFrame([texts, labels]).T
+#     df.columns = ['text', 'label']
+#     df['label'] = df['label'].apply(lambda x: x.replace('\n', ''))
+#     df['text'] = df['text'].apply(lambda x: x.replace('\n', ''))
+#     return df, partition_to_n_row
 
 def get_score(cm):
     fs = []

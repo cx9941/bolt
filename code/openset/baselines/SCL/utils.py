@@ -8,7 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from keras.backend import set_session
+# from keras.backend import set_session
 import numpy as np
 import random as rn
 from sklearn.decomposition import PCA
@@ -19,12 +19,30 @@ def naive_arg_topK(matrix, K, axis=0):
     return full_sort.take(np.arange(K), axis=axis)
 
 
-def set_allow_growth(device="1"):
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-    config.gpu_options.visible_device_list = device
-    sess = tf.Session(config=config)
-    set_session(sess)  # set this TensorFlow session as the default session for Keras
+# def set_allow_growth(device="1"):
+#     config = tf.ConfigProto()
+#     config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+#     config.gpu_options.visible_device_list = device
+#     sess = tf.Session(config=config)
+#     set_session(sess)  # set this TensorFlow session as the default session for Keras
+def set_allow_growth(device="0"):
+    """
+    使用 TensorFlow 2.x 的方式设置GPU，并允许内存增长。
+    """
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
+    
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # 获取所有可见的GPU设备
+            visible_gpus = tf.config.experimental.get_visible_devices('GPU')
+            for gpu in visible_gpus:
+                # 为每个可见的GPU设备设置内存增长
+                tf.config.experimental.set_memory_growth(gpu, True)
+            print(f"GPU memory growth set to True for devices: {visible_gpus}")
+        except RuntimeError as e:
+            # 内存增长必须在GPU初始化之前设置
+            print(e)
 
 
 def load_data(dataset):
@@ -266,7 +284,8 @@ def pca_visualization(X: np.ndarray,
     """
     red_features = PCA(n_components=2, svd_solver="full").fit_transform(X)
 
-    plt.style.use("seaborn-darkgrid")
+    # plt.style.use("seaborn-darkgrid")
+    plt.style.use("seaborn-v0_8-darkgrid")
     fig, ax = plt.subplots()
     for _class in classes:
         if _class == "unseen":

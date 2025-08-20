@@ -1,10 +1,10 @@
-from keras import backend as K
-from keras.models import Sequential, Model
-from keras.layers import *
-from keras.layers.core import Lambda
-from keras.constraints import unit_norm
-from keras.optimizers import Adam
-from keras.utils import plot_model
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Sequential, Model
+# 修正1：明确导入所有需要用到的层
+from tensorflow.keras.layers import Embedding, Bidirectional, LSTM, Dropout, Lambda, Dense, Activation
+from tensorflow.keras.constraints import unit_norm
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.utils import plot_model
 
 def large_margin_cosine_loss(y_true, y_pred, scale=30, margin=0.35):
     y_pred = y_true * (y_pred - margin) + (1 - y_true) * y_pred
@@ -12,7 +12,7 @@ def large_margin_cosine_loss(y_true, y_pred, scale=30, margin=0.35):
     return K.categorical_crossentropy(y_true, y_pred, from_logits=True)
 
 
-def BiLSTM_LMCL(max_seq_len, max_features, embedding_dim, output_dim, model_img_path=None, embedding_matrix=None):
+def BiLSTM_LMCL(max_seq_len, max_features, embedding_dim, output_dim, embedding_matrix, learning_rate, model_img_path=None):
     model = Sequential()
     if embedding_matrix is None:
         model.add(Embedding(max_features, embedding_dim, input_length=max_seq_len, mask_zero=True))
@@ -23,7 +23,9 @@ def BiLSTM_LMCL(max_seq_len, max_features, embedding_dim, output_dim, model_img_
     model.add(Bidirectional(LSTM(128, dropout=0.5)))
     model.add(Dropout(0.5))
     model.add(Lambda(lambda x: K.l2_normalize(x, axis=1)))
-    adam = Adam(lr=0.003, clipnorm=5.)
+    
+    # 修正2：使用传入的 learning_rate 参数
+    adam = Adam(learning_rate=learning_rate, clipnorm=5.)
     
     model.add(Dense(output_dim, use_bias=False, kernel_constraint=unit_norm()))
     model.add(Activation('softmax'))

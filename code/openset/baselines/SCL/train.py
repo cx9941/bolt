@@ -14,8 +14,10 @@ from nltk.tokenize import word_tokenize
 
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import to_categorical
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+# from keras.preprocessing.text import Tokenizer
+# from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn import metrics
 from thop import profile
 # Modeling
@@ -36,8 +38,16 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 def parse_args():
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("--dataset", type=str, default='news')
-    parser.add_argument("--proportion", type=int, default=25,
-                        help="The proportion of seen classes, range from 0 to 100.")
+    parser.add_argument('--data_dir', type=str, default='./data')
+    parser.add_argument('--known_cls_ratio', type=float, default=0.25)
+    parser.add_argument('--labeled_ratio', type=float, default=1.0)
+    parser.add_argument('--fold_idx', type=int, default=0)
+    parser.add_argument('--fold_num', type=int, default=5)
+    parser.add_argument("--gpu_id", type=str, default="0", help="The gpu device to use.")
+    parser.add_argument("--train_batch_size", type=int, default=8, help="Mini-batch size for train and validation")
+    parser.add_argument('--seed', type=int, default=0, help='Random seed')
+    # parser.add_argument("--proportion", type=int, default=25,
+    #                     help="The proportion of seen classes, range from 0 to 100.")
     parser.add_argument("--seen_classes", type=str, nargs="+", default=None,
                         help="The specific seen classes.")
     parser.add_argument("--mode", type=str, choices=["train", "test", "both", "find_threshold"], default="test",
@@ -49,10 +59,10 @@ def parse_args():
     parser.add_argument("--seen_classes_seed", type=int, default=None,
                         help="The random seed to randomly choose seen classes.")
     # default arguments
-    parser.add_argument("--cuda", action="store_true", default=True,
+    parser.add_argument("--cuda", type=lambda x: (str(x).lower() == 'true'), default=True,
                         help="Whether to use GPU or not.")
-    parser.add_argument("--gpu_device", type=str, default="0,1",
-                        help="The gpu device to use.")
+    # parser.add_argument("--gpu_device", type=str, default="0,1",
+    #                     help="The gpu device to use.")
     parser.add_argument("--output_dir", type=str, default="./experiments",
                         help="The directory to store training models & logs.")
     parser.add_argument("--experiment_No", type=str, default="vallian",
@@ -83,29 +93,29 @@ def parse_args():
                         help="proportion of unseen class examples to add in, range from 0 to 100.")
     parser.add_argument("--mask_proportion", type=int, default=0,
                         help="proportion of seen class examples to mask, range from 0 to 100.")
-    parser.add_argument("--ood_loss", action="store_true",
+    parser.add_argument("--ood_loss", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether ood examples to backpropagate loss or not.")
-    parser.add_argument("--adv", action="store_true",
+    parser.add_argument("--adv", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to generate perturbation through adversarial attack.")
-    parser.add_argument("--cont_loss", action="store_true",
+    parser.add_argument("--cont_loss", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to backpropagate contractive loss or not.")
     parser.add_argument("--norm_coef", type=float, default=0.1,
                         help="coefficients of the normalized adversarial vectors")
-    parser.add_argument("--n_plus_1", action="store_true",
+    parser.add_argument("--n_plus_1", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="treat out of distribution examples as the N+1 th class")
-    parser.add_argument("--augment", action="store_true",
+    parser.add_argument("--augment", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to use back translation to enhance the ood data")
     parser.add_argument("--cl_mode", type=int, default=1,
                         help="mode for computing contrastive loss")
-    parser.add_argument("--lmcl", action="store_true",
+    parser.add_argument("--lmcl", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to use LMCL loss")
     parser.add_argument("--cont_proportion", type=float, default=1.0,
                         help="coefficients of the normalized adversarial vectors")
     parser.add_argument("--dataset_proportion", type=float, default=100,
                         help="proportion for each in-domain data")
-    parser.add_argument("--use_bert", action="store_true",
+    parser.add_argument("--use_bert", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to use bert")
-    parser.add_argument("--sup_cont", action="store_true",
+    parser.add_argument("--sup_cont", type=lambda x: (str(x).lower() == 'true'), default=False,
                         help="whether to add supervised contrastive loss")
     # training hyperparameters
     parser.add_argument("--ind_pre_epoches", type=int, default=10,
@@ -125,14 +135,134 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=0.0001,
                         help="weight_decay")
     parser.add_argument('--clip', type=float, default=0.25, help='gradient clipping')
-    parser.add_argument('--seed', type=int, default=0, help='gradient clipping')
     args = parser.parse_args()
     return args
 
 
 args = parse_args()
-dataset = args.dataset
-proportion = args.proportion
+import tensorflow as tf
+
+# 为了兼容原代码，我们把标准参数名映射回原有的参数名
+args.proportion = int(args.known_cls_ratio * 100)
+args.batch_size = args.train_batch_size
+
+def load_and_process_data_for_scl(args):
+    """
+    SOP标准化的数据加载与预处理函数 for SCL.
+    """
+    # 1. 从标准路径加载数据
+    origin_train_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'train.tsv')
+    origin_dev_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'dev.tsv')
+    origin_test_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'test.tsv')
+
+    labeled_train_path = os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'train.tsv')
+    labeled_dev_path = os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'dev.tsv')
+
+    origin_train_df = pd.read_csv(origin_train_path, sep='\t')
+    origin_dev_df = pd.read_csv(origin_dev_path, sep='\t')
+    test_df = pd.read_csv(origin_test_path, sep='\t')
+
+    labeled_train_df = pd.read_csv(labeled_train_path, sep='\t')
+    labeled_dev_df = pd.read_csv(labeled_dev_path, sep='\t')
+    
+    train_df = labeled_train_df
+    train_df['text'] = origin_train_df['text']
+    
+    dev_df = labeled_dev_df
+    dev_df['text'] = origin_dev_df['text']
+
+    # 2. 加载标准化的已知类列表
+    known_label_path = os.path.join(args.data_dir, args.dataset, 'label', f'fold{args.fold_num}', f'part{args.fold_idx}', f'label_known_{args.known_cls_ratio}.list')
+    y_cols_seen = pd.read_csv(known_label_path, header=None)[0].tolist()
+    y_cols_all = train_df['label'].unique().tolist()
+    y_cols_unseen = [l for l in y_cols_all if l not in y_cols_seen]
+    n_class_seen = len(y_cols_seen)
+    print(f"Loaded {n_class_seen} known classes.")
+
+    # 3. (关键修改) 仅在训练集上构建词汇表，防止数据泄露
+    train_texts = train_df['text'].astype(str).apply(lambda s: " ".join(word_tokenize(s)))
+    tokenizer = Tokenizer(num_words=args.max_num_words, oov_token="<UNK>", filters='!"#$%&()*+-/:;<=>@[\]^_`{|}~')
+    tokenizer.fit_on_texts(train_texts)
+    word_index = tokenizer.word_index
+
+    # 4. 文本序列化和填充
+    def texts_to_padded_sequences(texts):
+        tokenized_texts = texts.astype(str).apply(lambda s: " ".join(word_tokenize(s)))
+        sequences = tokenizer.texts_to_sequences(tokenized_texts)
+        return pad_sequences(sequences, maxlen=args.max_seq_len, padding='post', truncating='post')
+
+    X_train = texts_to_padded_sequences(train_df['text'])
+    X_valid = texts_to_padded_sequences(dev_df['text'])
+    X_test = texts_to_padded_sequences(test_df['text'])
+    
+    y_train = train_df.label
+    y_valid = dev_df.label
+    y_test = test_df.label
+
+    # 5. 按照已知/未知类别划分数据集索引 (保留SCL原有逻辑)
+    train_seen_idx = y_train[y_train.isin(y_cols_seen)].index
+    train_ood_idx = y_train[y_train.isin(y_cols_unseen)].index
+    valid_seen_idx = y_valid[y_valid.isin(y_cols_seen)].index
+    valid_ood_idx = y_valid[y_valid.isin(y_cols_unseen)].index
+    test_seen_idx = y_test[y_test.isin(y_cols_seen)].index
+    test_ood_idx = y_test[y_test.isin(y_cols_unseen)].index
+
+    # 6. 创建最终使用的数据集
+    X_train_seen, y_train_seen = X_train[train_seen_idx], y_train[train_seen_idx]
+    X_train_ood, y_train_ood = X_train[train_ood_idx], y_train[train_ood_idx]
+    X_valid_seen, y_valid_seen = X_valid[valid_seen_idx], y_valid[valid_seen_idx]
+    X_valid_ood, y_valid_ood = X_valid[valid_ood_idx], y_valid[valid_ood_idx]
+    X_test_seen, y_test_seen = X_test[test_seen_idx], y_test[test_seen_idx]
+    X_test_ood, y_test_ood = X_test[test_ood_idx], y_test[test_ood_idx]
+    
+    # 获取原始文本数据给DataLoader使用
+    train_seen_text = train_df['text'][train_seen_idx].tolist()
+    valid_seen_text = dev_df['text'][valid_seen_idx].tolist()
+    valid_unseen_text = dev_df['text'][valid_ood_idx].tolist()
+    test_text = test_df['text'].tolist()
+
+    print("Train seen : Valid seen : Test seen = %d : %d : %d" % (len(X_train_seen), len(X_valid_seen), len(X_test_seen)))
+
+    # 7. 标签编码与One-Hot转换 (保留SCL原有逻辑)
+    le = LabelEncoder()
+    le.fit(y_train_seen)
+    y_train_idx = le.transform(y_train_seen)
+    y_valid_idx = le.transform(y_valid_seen)
+    y_test_idx = le.transform(y_test_seen)
+    
+    y_train_onehot = to_categorical(y_train_idx, num_classes=n_class_seen)
+    y_valid_onehot = to_categorical(y_valid_idx, num_classes=n_class_seen)
+    y_test_onehot = to_categorical(y_test_idx, num_classes=n_class_seen)
+
+    y_train_ood_onehot = np.array([[0.0] * n_class_seen for _ in range(len(X_train_ood))])
+    y_valid_ood_onehot = np.array([[0.0] * n_class_seen for _ in range(len(X_valid_ood))])
+    
+    y_test_mask = y_test.copy()
+    y_test_mask[y_test_mask.isin(y_cols_unseen)] = 'unseen'
+    
+    # 8. 组合最终数据集给DataLoader
+    train_data_raw = (X_train_seen, y_train_onehot)
+    valid_data_raw = (X_valid_seen, y_valid_onehot)
+    valid_data_ood = (X_valid_ood, np.zeros(len(X_valid_ood))) # label for ood doesn't matter much here
+    train_data = (np.concatenate((X_train_seen, X_train_ood)), np.concatenate((y_train_onehot, y_train_ood_onehot)))
+    valid_data = (np.concatenate((X_valid_seen, X_valid_ood)), np.concatenate((y_valid_onehot, y_valid_ood_onehot)))
+    test_data = (X_test, y_test_mask)
+
+    return (train_data_raw, valid_data_raw, valid_data_ood, test_data, train_data, valid_data,
+            train_seen_text, valid_seen_text, valid_unseen_text, test_text,
+            word_index, le, y_cols_unseen, n_class_seen, y_train_seen, y_test, y_test_mask)
+
+# --- 调用新的数据加载函数 ---
+args = parse_args()
+tf.random.set_seed(args.seed)
+np.random.seed(args.seed)
+random.seed(args.seed)
+
+(train_data_raw, valid_data_raw, valid_data_ood, test_data, train_data, valid_data,
+ train_seen_text, valid_seen_text, valid_unseen_text, test_text,
+ word_index, le, y_cols_unseen, n_class_seen, y_train_seen, y_test, y_test_mask) = load_and_process_data_for_scl(args)
+
+# 兼容原脚本后续对全局变量的使用
 BETA = args.beta
 ALPHA = args.alpha
 DO_NORM = args.do_normalization
@@ -152,209 +282,7 @@ LMCL = args.lmcl
 CL_MODE = args.cl_mode
 USE_BERT = args.use_bert
 SUP_CONT = args.sup_cont
-is_sup_cont = 'yes' if args.sup_cont else 'no'
 CUDA = args.cuda
-df, partition_to_n_row = load_data(dataset)
-
-if not os.path.exists(f"metrics/{args.dataset}_{args.proportion}"):
-    os.makedirs(f"metrics/{args.dataset}_{args.proportion}")
-
-if os.path.exists(f"metrics/{args.dataset}_{args.proportion}/{is_sup_cont}_msp_{args.seed}.json"):
-    exit()
-
-tf.random.set_random_seed(args.seed)
-
-df['content_words'] = df['text'].apply(lambda s: word_tokenize(s))
-texts = df['content_words'].apply(lambda l: " ".join(l))
-
-# Do not filter out "," and "."
-tokenizer = Tokenizer(num_words=MAX_NUM_WORDS, oov_token="<UNK>", filters='!"#$%&()*+-/:;<=>@[\]^_`{|}~')
-
-tokenizer.fit_on_texts(texts)
-word_index = tokenizer.word_index
-sequences = tokenizer.texts_to_sequences(texts)
-sequences_pad = pad_sequences(sequences, maxlen=MAX_SEQ_LEN, padding='post', truncating='post')
-
-# Train-valid-test split
-idx_train = (None, partition_to_n_row['train'])
-idx_valid = (partition_to_n_row['train'], partition_to_n_row['train'] + partition_to_n_row['valid'])
-idx_test = (partition_to_n_row['train'] + partition_to_n_row['valid'], partition_to_n_row['train'] + partition_to_n_row['valid'] + partition_to_n_row['test'])
-idx_cont = (partition_to_n_row['train'] + partition_to_n_row['valid'] + partition_to_n_row['test'], None)
-
-X_train = sequences_pad[idx_train[0]:idx_train[1]]
-X_valid = sequences_pad[idx_valid[0]:idx_valid[1]]
-X_test = sequences_pad[idx_test[0]:idx_test[1]]
-X_cont = sequences_pad[idx_cont[0]:idx_cont[1]]
-
-df_train = df[idx_train[0]:idx_train[1]]
-df_valid = df[idx_valid[0]:idx_valid[1]]
-df_test = df[idx_test[0]:idx_test[1]]
-df_cont = df[idx_cont[0]:idx_cont[1]]
-
-y_train = df_train.label.reset_index(drop=True)
-y_valid = df_valid.label.reset_index(drop=True)
-y_test = df_test.label.reset_index(drop=True)
-y_cont = df_cont.label.reset_index(drop=True)
-train_text = df_train.text.reset_index(drop=True)
-valid_text = df_valid.text.reset_index(drop=True)
-test_text = df_test.text.reset_index(drop=True)
-cont_text = df_cont.text.reset_index(drop=True)
-print("cont: %d" % (X_cont.shape[0]))
-
-n_class = y_train.unique().shape[0]
-if 'CLINC_OOD' in args.dataset and not args.n_plus_1:
-    n_class -= 1
-if args.augment and 'oos_b' in list(y_train.unique()):
-    n_class -= 1
-
-# n_class_seen = round(n_class * proportion / 100)
-# print(n_class_seen)
-
-# if args.seen_classes is None:
-#     if args.seen_classes_seed is not None:
-#         random.seed(args.seen_classes_seed)
-#         y_cols = y_train.unique()
-#         y_cols_lst = list(y_cols)
-#         if 'oos' in y_cols_lst:
-#             y_cols_lst.remove('oos')
-#         if 'oos_b' in y_cols_lst:
-#             y_cols_lst.remove('oos_b')
-#         random.shuffle(y_cols_lst)
-#         y_cols_seen = y_cols_lst[:n_class_seen]
-#         y_cols_unseen = y_cols_lst[n_class_seen:]
-#     else:
-#         # Original implementation
-#         weighted_random_sampling = False
-#         if weighted_random_sampling:
-#             y_cols = y_train.unique()
-#             y_vc = y_train.value_counts()
-#             y_vc = y_vc / y_vc.sum()
-#             y_cols_seen = np.random.choice(y_vc.index, n_class_seen, p=y_vc.values, replace=False)
-#             y_cols_unseen = [y_col for y_col in y_cols if y_col not in y_cols_seen]
-#         else:
-#             y_cols = list(y_train.unique())
-#             if 'oos' in y_cols and not args.n_plus_1:
-#                 y_cols.remove('oos')
-#             if args.augment and 'oos_b' in y_cols:
-#                 y_cols.remove('oos_b')
-#             y_cols_seen = random.sample(y_cols, n_class_seen)
-#             y_cols_unseen = [y_col for y_col in y_cols if y_col not in y_cols_seen]
-# else:
-#     y_cols = y_train.unique()
-#     y_cols_seen = [y_col for y_col in y_cols if y_col in args.seen_classes and y_col != 'oos']
-#     y_cols_unseen = [y_col for y_col in y_cols if y_col not in args.seen_classes]
-# print(y_cols_seen)
-# print(y_cols_unseen)
-
-## 我自己设置的固定已知类
-y_cols_seen = pd.read_csv(f'data/{args.dataset}/known_class_{args.proportion}.txt', header=None)[0].tolist()
-y_cols_unseen = list(set(y_train.value_counts().index) - set(y_cols_seen))
-n_class_seen = len(y_cols_seen)
-##
-
-y_cols_unseen_b = []
-if 'CLINC_OOD' in args.dataset and not args.n_plus_1:
-    y_cols_unseen = ['oos']
-if args.augment:
-    y_cols_unseen = ['oos']
-    y_cols_unseen_b = ['oos_b']
-
-for i in range(len(y_cols_seen)):
-    tmp_idx = y_train[y_train.isin([y_cols_seen[i]])]
-    tmp_idx = tmp_idx[:int(args.dataset_proportion / 100 * len(tmp_idx))].index
-    if not i:
-        part_train_seen_idx = tmp_idx
-    else:
-        part_train_seen_idx = np.concatenate((part_train_seen_idx, tmp_idx), axis=0)
-
-train_seen_idx = y_train[y_train.isin(y_cols_seen)].index
-train_ood_idx = y_train[y_train.isin(y_cols_unseen)]
-train_ood_idx = train_ood_idx[:int(args.unseen_proportion / 100 * len(train_ood_idx))].index
-
-valid_seen_idx = y_valid[y_valid.isin(y_cols_seen)].index
-valid_ood_idx = y_valid[y_valid.isin(y_cols_unseen)]
-valid_ood_idx = valid_ood_idx[:int(args.unseen_proportion / 100 * len(valid_ood_idx))].index
-
-test_seen_idx = y_test[y_test.isin(y_cols_seen)].index
-test_ood_idx = y_test[y_test.isin(y_cols_unseen)].index
-
-src_cols = ['src']
-bt_cols = ['bt']
-src_idx = y_cont[y_cont.isin(src_cols)]
-ind_src_idx = src_idx[:int(args.cont_proportion * 0.8 * len(src_idx))].index
-ood_src_idx = src_idx[int(0.8 * len(src_idx)):int(0.8 * len(src_idx) + args.cont_proportion * 0.2 * len(src_idx))].index
-bt_idx = y_cont[y_cont.isin(bt_cols)]
-ind_bt_idx = bt_idx[:int(args.cont_proportion * 0.8 * len(bt_idx))].index
-ood_bt_idx = bt_idx[int(0.8 * len(bt_idx)):int(0.8 * len(bt_idx) + args.cont_proportion * 0.2 * len(bt_idx))].index
-
-X_train_seen = X_train[part_train_seen_idx]
-X_train_ood = X_train[train_ood_idx]
-y_train_seen = y_train[part_train_seen_idx]
-train_seen_text = list(train_text[part_train_seen_idx])
-train_unseen_text = list(train_text[train_ood_idx])
-X_valid_seen = X_valid[valid_seen_idx]
-X_valid_ood = X_valid[valid_ood_idx]
-y_valid_seen = y_valid[valid_seen_idx]
-valid_seen_text = list(valid_text[valid_seen_idx])
-valid_unseen_text = list(valid_text[valid_ood_idx])
-X_test_seen = X_test[test_seen_idx]
-X_test_ood = X_test[test_ood_idx]
-y_test_seen = y_test[test_seen_idx]
-test_seen_text = list(test_text[test_seen_idx])
-test_unseen_text = list(test_text[test_ood_idx])
-
-print("train : valid : test = %d : %d : %d" % (X_train_seen.shape[0], X_valid_seen.shape[0], X_test_seen.shape[0]))
-
-src_ind_x = X_cont[ind_src_idx]
-src_ind_y = y_cont[ind_src_idx]
-bt_ind_x = X_cont[ind_bt_idx]
-bt_ind_y = y_cont[ind_bt_idx]
-src_ood_x = X_cont[ood_src_idx]
-src_ood_y = y_cont[ood_src_idx]
-bt_ood_x = X_cont[ood_bt_idx]
-bt_ood_y = y_cont[ood_bt_idx]
-
-if y_cols_unseen_b:
-    train_ood_idx_b = y_train[y_train.isin(y_cols_unseen_b)].index
-    X_train_ood_b = X_train[train_ood_idx_b]
-
-le = LabelEncoder()
-le.fit(y_train_seen)
-y_train_idx = le.transform(y_train_seen)
-y_valid_idx = le.transform(y_valid_seen)
-y_test_idx = le.transform(y_test_seen)
-ood_index = y_test_idx[0]
-y_train_onehot = to_categorical(y_train_idx)
-y_valid_onehot = to_categorical(y_valid_idx)
-y_test_onehot = to_categorical(y_test_idx)
-for i in range(int(args.mask_proportion / 100 * len(y_train_onehot))):
-    y_train_onehot[i] = [0.0] * n_class_seen
-for i in range(int(args.mask_proportion / 100 * len(y_valid_onehot))):
-    y_valid_onehot[i] = [0.0] * n_class_seen
-y_train_ood = np.array([[0.0] * n_class_seen for _ in range(len(train_ood_idx))])
-y_valid_ood = np.array([[0.0] * n_class_seen for _ in range(len(valid_ood_idx))])
-y_test_ood = np.array([[0.0] * n_class_seen for _ in range(len(test_ood_idx))])
-
-y_test_mask = y_test.copy()
-y_test_mask[y_test_mask.isin(y_cols_unseen)] = 'unseen'
-train_text = train_seen_text + train_unseen_text
-valid_text = valid_seen_text + valid_unseen_text
-test_text = list(test_text)
-if not args.unseen_proportion:
-    train_data_raw = train_data = (X_train_seen, y_train_onehot)
-    valid_data_raw = valid_data = (X_valid_seen, y_valid_onehot)
-else:
-    train_data_raw = (X_train_seen, y_train_onehot)
-    valid_data_raw = (X_valid_seen, y_valid_onehot)
-    train_data_ood = (X_train_ood, y_train_ood)
-    valid_data_ood = (X_valid_ood, y_valid_ood)
-    train_data = (np.concatenate((X_train_seen,X_train_ood),axis=0), np.concatenate((y_train_onehot,y_train_ood),axis=0))
-    valid_data = (np.concatenate((X_valid_seen,X_valid_ood),axis=0), np.concatenate((y_valid_onehot,y_valid_ood),axis=0))
-test_data = (X_test, y_test_mask)
-test_data_4np1 = (X_test, y_test_onehot)
-if args.augment:
-    train_augment = (np.concatenate((src_ind_x,src_ood_x),axis=0),np.concatenate((bt_ind_x,bt_ood_x),axis=0))
-
 
 class DataLoader(object):
     def __init__(self, data, batch_size, mode='train', use_bert=False, raw_text=None):
@@ -408,15 +336,13 @@ class DataLoader(object):
 
 if args.mode in ["train", "both"]:
     # GPU setting
-    set_allow_growth(device=args.gpu_device)
+    set_allow_growth(device=args.gpu_id)
 
     timestamp = str(time.time())  # strftime("%m%d%H%M")
-    if args.experiment_No:
-        output_dir = os.path.join(args.output_dir, f"{dataset}-{proportion}-{args.experiment_No}")
-    else:
-        output_dir = os.path.join(args.output_dir, f"{dataset}-{proportion}-{timestamp}")
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+
+    output_dir = args.output_dir 
+    os.makedirs(output_dir, exist_ok=True)
+
     with open(os.path.join(output_dir, "seen_classes.txt"), "w") as f_out:
         f_out.write("\n".join(le.classes_))
     with open(os.path.join(output_dir, "unseen_classes.txt"), "w") as f_out:
@@ -428,7 +354,8 @@ if args.mode in ["train", "both"]:
         def get_coefs(word, *arr):
             return word, np.asarray(arr, dtype='float32')
         embeddings_index = dict(get_coefs(*o.strip().split()) for o in open(EMBEDDING_FILE))
-        all_embs = np.stack(embeddings_index.values())
+        # all_embs = np.stack(embeddings_index.values())
+        all_embs = np.stack(list(embeddings_index.values()))
         emb_mean, emb_std = all_embs.mean(), all_embs.std()
         embedding_matrix = np.random.normal(emb_mean, emb_std, (MAX_FEATURES, EMBEDDING_DIM))
         for word, i in word_index.items():
@@ -483,6 +410,7 @@ if args.mode in ["train", "both"]:
         train_iterator = tqdm(
             train_loader, initial=global_step,
             desc="Iter (loss=X.XXX)")
+        valid_text = valid_seen_text + valid_unseen_text
         valid_loader = DataLoader(valid_data, BATCH_SIZE, use_bert=USE_BERT, raw_text=valid_text)
         model.train()
         for j, (seq, label) in enumerate(train_iterator):
@@ -565,9 +493,9 @@ if args.mode in ["test", "both", "find_threshold"]:
         else:
             model_dir = output_dir
         if args.cuda:
-            model = torch.load(os.path.join(model_dir, "model_best.pkl"), map_location='cuda:0')
+            model = torch.load(os.path.join(model_dir, "model_best.pkl"), map_location='cuda:0', weights_only=False)
         else:
-            model = torch.load(os.path.join(model_dir, "model_best.pkl"), map_location='cpu')
+            model = torch.load(os.path.join(model_dir, "model_best.pkl"), map_location='cpu', weights_only=False)
         train_loader = DataLoader(train_data_raw, BATCH_SIZE, 'test', use_bert=USE_BERT, raw_text=train_seen_text)
         valid_loader = DataLoader(valid_data_raw, BATCH_SIZE, use_bert=USE_BERT, raw_text=valid_seen_text)
         valid_ood_loader = DataLoader(valid_data_ood, BATCH_SIZE, 'test', use_bert=USE_BERT, raw_text=valid_unseen_text)
@@ -654,7 +582,23 @@ if args.mode in ["test", "both", "find_threshold"]:
         if args.mode == 'find_threshold':
             settings = ['gda_lsqr_'+str(10.0+1.0*(i)) for i in range(20)]
         else:
-            settings = args.setting
+            settings_arg = args.setting
+            
+            # ================================================================
+            # --- 最终版修正逻辑 ---
+            # ================================================================
+            # 1. 将破损的列表零件合并成一个完整的字符串
+            settings_str = "".join(settings_arg)  # 例如，"['gda','lof','msp']"
+            
+            # 2. 清理这个完整的字符串，去掉所有杂质
+            cleaned_str = settings_str.replace('[', '').replace(']', '').replace("'", "").replace('"', '').replace(' ', '')
+            
+            # 3. 按逗号分割，得到最终干净的列表
+            settings = cleaned_str.split(',')
+            # ================================================================
+            # --- 修正结束 ---
+            # ================================================================
+
         for setting in settings:
             pred_dir = os.path.join(model_dir, f"{setting}")
             if not os.path.exists(pred_dir):
@@ -671,7 +615,7 @@ if args.mode in ["test", "both", "find_threshold"]:
                 lof.fit(feature_train)
                 l = len(feature_test)
                 y_pred_lof = pd.Series(lof.predict(feature_test))
-                test_info = get_test_info(texts=texts[idx_test[0]:idx_test[0]+l],
+                test_info = get_test_info(texts=test_text,
                                           label=y_test[:l],
                                           label_mask=y_test_mask[:l],
                                           softmax_prob=prob_test,
@@ -734,7 +678,7 @@ if args.mode in ["test", "both", "find_threshold"]:
 
                 y_pred = pd.Series(gda.predict(prob_test))
                 gda_result = confidence(prob_test, gda.means_, distance_type, gda.covariance_)
-                test_info = get_test_info(texts=texts[idx_test[0]:idx_test[0]+l],
+                test_info = get_test_info(texts=test_text,
                                           label=y_test[:l],
                                           label_mask=y_test_mask[:l],
                                           softmax_prob=prob_test,
@@ -785,15 +729,66 @@ if args.mode in ["test", "both", "find_threshold"]:
                 # log_pred_results(f, acc_all, f_seen, acc_in, p_seen, r_seen, f_unseen, acc_ood, p_unseen, r_unseen,
                 #                  classes, pred_dir, cm, OOD_LOSS, ADV, CONT_LOSS, threshold)
                 
+            # ========================================================================
+            # --- 全新的、标准化的结果保存逻辑 ---
+            # ========================================================================
             from sklearn.metrics import classification_report 
-            import json
+            import pandas as pd
 
-            metrics = classification_report(y_test_mask[:l], y_pred, output_dict=True)
-            seen_classes = [i for i in y_test_mask[:l].tolist() if i != 'unseen']
-            print(classification_report(y_test_mask[:l], y_pred))
-            final_metrics = {}
-            final_metrics['N-F1'] = metrics['unseen']['f1-score']
-            final_metrics['K-F1'] = sum([metrics[i]['f1-score'] for i in seen_classes]) / len(seen_classes)
-            final_metrics['ACC'] = metrics['accuracy']
-            final_metrics['F1'] = metrics['macro avg']['f1-score']
-            json.dump(final_metrics, open(f"metrics/{args.dataset}_{args.proportion}/{is_sup_cont}_{ood_method}_{args.seed}.json", 'w'))
+            # 打印详细报告到控制台，方便实时查看 (增加 zero_division=0 避免警告)
+            print(classification_report(y_test_mask[:l], y_pred, zero_division=0))
+            
+            # 将报告转换为字典格式以提取指标
+            metrics = classification_report(y_test_mask[:l], y_pred, output_dict=True, zero_division=0)
+            
+            # --- 步骤1：创建“单行”结果字典 (模仿ADB和DOC的逻辑) ---
+            final_results = {}
+
+            # a. 添加实验参数元数据
+            final_results['dataset'] = args.dataset
+            final_results['seed'] = args.seed
+            final_results['known_cls_ratio'] = args.known_cls_ratio
+            final_results['ood_method'] = setting # 记录本次使用的是哪种OOD检测方法
+
+            # b. 添加核心的总览性能指标
+            final_results['ACC'] = metrics['accuracy']
+            final_results['F1'] = metrics['macro avg']['f1-score']
+
+            # c. 添加自定义的 K-F1 (已知类F1) 和 N-F1 (未知类F1) 指标
+            # 获取所有已知类的标签名
+            seen_class_labels = [str(c) for c in le.classes_]
+            
+            known_f1_scores = [metrics[label]['f1-score'] for label in seen_class_labels if label in metrics]
+            if known_f1_scores:
+                final_results['K-F1'] = sum(known_f1_scores) / len(known_f1_scores)
+            else:
+                final_results['K-F1'] = 0.0
+
+            if 'unseen' in metrics:
+                final_results['N-F1'] = metrics['unseen']['f1-score']
+            else:
+                final_results['N-F1'] = 0.0
+
+            # --- 步骤2：将“单行”结果追加保存到主 results.csv 文件 ---
+            # 定义标准化的 metrics 输出目录和文件路径
+            metric_dir = os.path.join(args.output_dir, 'metrics')
+            os.makedirs(metric_dir, exist_ok=True)
+            results_path = os.path.join(metric_dir, 'results.csv')
+
+            if not os.path.exists(results_path):
+                # 如果文件不存在，直接创建并写入（包含表头）
+                df_to_save = pd.DataFrame([final_results])
+                df_to_save.to_csv(results_path, index=False)
+            else:
+                # 如果文件存在，则读取->追加->写回
+                existing_df = pd.read_csv(results_path)
+                new_row_df = pd.DataFrame([final_results])
+                updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+                updated_df.to_csv(results_path, index=False)
+
+            print(f"\nResults have been saved to: {results_path}")
+            print("Appended new result row:")
+            print(pd.DataFrame([final_results]))
+            # ========================================================================
+            # --- 结果保存逻辑结束 ---
+            # ========================================================================

@@ -22,7 +22,7 @@ import math
 import os
 import re
 import shutil
-import fitlog
+# import fitlog
 import warnings
 import random
 import copy
@@ -52,10 +52,14 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from transformers.data.data_collator import DataCollator, DataCollatorWithPadding, default_data_collator
-from transformers.file_utils import WEIGHTS_NAME, is_datasets_available, is_in_notebook, is_torch_tpu_available
+# from transformers.file_utils import WEIGHTS_NAME, is_datasets_available, is_in_notebook, is_torch_tpu_available
+from transformers.utils.import_utils import is_datasets_available, is_in_notebook
+from transformers.utils import WEIGHTS_NAME
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.auto.modeling_auto import MODEL_FOR_QUESTION_ANSWERING_MAPPING
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+# from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+from torch.optim import AdamW
+from transformers.optimization import get_linear_schedule_with_warmup
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers.trainer_callback import (
     CallbackHandler,
@@ -84,7 +88,6 @@ from transformers.trainer_utils import (
     HPSearchBackend,
     TrainOutput,
     default_compute_objective,
-    default_hp_space,
     set_seed,
 )
 
@@ -120,10 +123,10 @@ else:
 if is_datasets_available():
     import datasets
 
-if is_torch_tpu_available():
-    import torch_xla.core.xla_model as xm
-    import torch_xla.debug.metrics as met
-    import torch_xla.distributed.parallel_loader as pl
+# if is_torch_tpu_available():
+#     import torch_xla.core.xla_model as xm
+#     import torch_xla.debug.metrics as met
+#     import torch_xla.distributed.parallel_loader as pl
 
 if is_tensorboard_available():
     from transformers.integrations import TensorBoardCallback
@@ -253,15 +256,17 @@ class SimpleTrainer:
     def create_negative_dataset(self):
         negative_dataset = {}
         data = self.train_dataset
+        # 定义我们真正需要被转换为张量的键
+        tensor_keys = ['input_ids', 'token_type_ids', 'attention_mask']
 
         for line in data:
             label = int(line["label"])
-            inputs = line
-            inputs.pop("original_text")
-            inputs.pop("sent_id")
-            inputs.pop("label")
-            inputs.pop("text")
-            if label not in negative_dataset.keys():
+            
+            # 创建一个全新的、干净的字典，只包含我们需要的键值对
+            # 这种方法避免了原地修改原始数据，更安全、更稳健
+            inputs = {key: line[key] for key in tensor_keys if key in line}
+            
+            if label not in negative_dataset:
                 negative_dataset[label] = [inputs]
             else:
                 negative_dataset[label].append(inputs)
@@ -316,7 +321,7 @@ class SimpleTrainer:
                 self.train_dataset, collections.abc.Sized
         ):
             return None
-        elif is_torch_tpu_available():
+        elif False:
             return get_tpu_sampler(self.train_dataset)
         else:
             return (
@@ -348,7 +353,7 @@ class SimpleTrainer:
         )
 
     def _get_eval_sampler(self, eval_dataset: Dataset) -> Optional[torch.utils.data.sampler.Sampler]:
-        if is_torch_tpu_available():
+        if False:
             return SequentialDistributedSampler(eval_dataset, num_replicas=xm.xrt_world_size(), rank=xm.get_ordinal())
         elif self.args.local_rank != -1:
             return SequentialDistributedSampler(eval_dataset)
@@ -532,7 +537,7 @@ class SimpleTrainer:
                 tr_loss += loss.item()
             print('Epoch: [{0}]: Loss {loss:.4f}'.format(epoch, loss=tr_loss / global_step))
             cl_loss_name = 'sup_Clearning_loss'
-            fitlog.add_loss(tr_loss / global_step, name=cl_loss_name, step=epoch)
+            # fitlog.add_loss(tr_loss / global_step, name=cl_loss_name, step=epoch)
             ### Get model performing in valid IND #####
             f1 = self.valution_cal(model, valid_loader)
             if f1 > best_f1:

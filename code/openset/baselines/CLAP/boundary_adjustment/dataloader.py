@@ -2,7 +2,7 @@ from util import *
 import torch
 from torch.utils.data import DataLoader, Dataset
 from ctDataset import ContrastiveDataset
-import json_lines
+# import json_lines
 import pandas as pd
 import json
 def set_seed(seed):
@@ -14,37 +14,75 @@ class Data:
     
     def __init__(self, args):
         set_seed(args.seed)
-        # max_seq_lengths = {'oos':30, 'stackoverflow':45,'banking':55}
-        args.max_seq_length = 512
-        self.p, self.n = args.p, args.n
-        neg_num_dict = {"oos": 100, "stackoverflow": 600, "banking": 100}
-        self.neg_num = 600
-        processor = DatasetProcessor()
-        self.data_dir = os.path.join(args.data_dir, args.dataset)
-        self.all_label_list = processor.get_labels(self.data_dir)
-        # self.n_known_cls = round(len(self.all_label_list) * args.known_cls_ratio)
-        # self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
-
-        known_class = pd.read_csv(f'../../../data/{args.dataset}/{args.dataset}_{args.known_cls_ratio}/idx.txt', sep='\t')
-        known_class_list = known_class['node'].apply(lambda x: '_'.join(x.split(' '))).tolist()
-        self.known_label_list = known_class_list
-
+        
+        # ========================================================================
+        # --- 全新的、符合SOP标准的数据加载与处理逻辑 ---
+        # ========================================================================
+        
+        # 1. 根据SOP标准从YAML参数构建文件路径
+        origin_train_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'train.tsv')
+        origin_eval_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'dev.tsv')
+        origin_test_path = os.path.join(args.data_dir, args.dataset, 'origin_data', 'test.tsv')
+        
+        labeled_train_path = os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'train.tsv')
+        
+        # 2. 使用pandas加载标准化的TSV文件
+        origin_train_df = pd.read_csv(origin_train_path, sep='\t')
+        origin_eval_df = pd.read_csv(origin_eval_path, sep='\t')
+        origin_test_df = pd.read_csv(origin_test_path, sep='\t')
+        labeled_train_df = pd.read_csv(labeled_train_path, sep='\t')
+        
+        df_train = labeled_train_df
+        df_train['text'] = origin_train_df['text']
+        
+        # 3. 从标准化的.list文件加载已知类
+        known_label_path = os.path.join(
+            args.data_dir,
+            args.dataset,
+            'label',
+            f'fold{args.fold_num}',
+            f'part{args.fold_idx}',
+            f'label_known_{args.known_cls_ratio}.list'
+        )
+        self.known_label_list = pd.read_csv(known_label_path, header=None)[0].tolist()
         self.num_labels = len(self.known_label_list)
-        self.neg_times = args.neg_times
+
+        self.p, self.n = args.p, args.n
+
+        # 4. 筛选数据，构建examples
+        # Boundary Adjustment阶段的训练集只使用已知类
+        train_examples_df = df_train[df_train.label.isin(self.known_label_list)]
+        eval_examples_df = origin_eval_df[origin_eval_df.label.isin(self.known_label_list)]
+        
+        # 测试集包含所有类别，并将未知类标签替换为'unseen'
+        test_examples_df = origin_test_df
+        test_examples_df.loc[~test_examples_df['label'].isin(self.known_label_list), 'label'] = '<UNK>'
+
+        # 将DataFrame转换为旧代码期望的InputExample格式
+        processor = DatasetProcessor()
+        self.train_examples = processor._create_examples_from_df(train_examples_df, 'train')
+        self.eval_examples = processor._create_examples_from_df(eval_examples_df, 'eval')
+        self.test_examples = processor._create_examples_from_df(test_examples_df, 'test')
+        
         if args.dataset == 'oos':
             self.unseen_token = 'oos'
         else:
             self.unseen_token = '<UNK>'
-        
         self.unseen_token_id = self.num_labels
-
         self.label_list = self.known_label_list + [self.unseen_token]
-        self.train_examples = self.get_examples(processor, args, 'train')
-        self.eval_examples = self.get_examples(processor, args, 'eval')
-        self.test_examples = self.get_examples(processor, args, 'test')
+
+        # 5. 获取DataLoader (保留原逻辑)
         self.train_dataloader = self.get_loader(self.train_examples, args, 'train')
         self.eval_dataloader = self.get_loader(self.eval_examples, args, 'eval')
         self.test_dataloader = self.get_loader(self.test_examples, args, 'test')
+
+        # 6. 设置其他属性 (保留原逻辑)
+        if args.dataset == 'oos':
+            self.unseen_token = 'oos'
+        else:
+            self.unseen_token = '<UNK>'
+        self.unseen_token_id = self.num_labels
+        self.label_list = self.known_label_list + [self.unseen_token]
 
     def get_examples(self, processor, args, mode='train'):
         ori_examples = processor.get_examples(self.data_dir, mode)
@@ -67,7 +105,7 @@ class Data:
         return examples
 
     def get_loader(self, examples, args, mode='train', aug_examples=None):
-        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
+        tokenizer = BertTokenizer.from_pretrained(args.pretrain_dir, do_lower_case=True)
         features = convert_examples_to_features(examples, self.label_list, args.max_seq_length, tokenizer)
         input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
@@ -168,6 +206,17 @@ class DataProcessor(object):
 
 class DatasetProcessor(DataProcessor):
 
+    def _create_examples_from_df(self, df, set_type):
+        """从DataFrame创建examples的辅助函数"""
+        examples = []
+        for i, row in df.iterrows():
+            guid = "%s-%s" % (set_type, i)
+            text_a = row['text']
+            label = row['label']
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+        return examples
+    
     def get_examples(self, data_dir, mode):
         if mode == 'train':
             return self._create_examples(

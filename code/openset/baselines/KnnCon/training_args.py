@@ -19,7 +19,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from transformers.file_utils import cached_property, is_torch_available, is_torch_tpu_available, torch_required
+# from transformers.file_utils import cached_property, is_torch_available, is_torch_tpu_available, torch_required
+from functools import cached_property      # cached_property 已成为Python 3.8+的标准库
+from transformers.utils.import_utils import is_torch_available
+# from transformers import torch_required 
 from transformers.trainer_utils import EvaluationStrategy
 from transformers.utils import logging
 
@@ -27,8 +30,8 @@ from transformers.utils import logging
 if is_torch_available():
     import torch
 
-if is_torch_tpu_available():
-    import torch_xla.core.xla_model as xm
+# if is_torch_tpu_available():
+#     import torch_xla.core.xla_model as xm
 
 
 logger = logging.get_logger(__name__)
@@ -395,7 +398,18 @@ class TrainingArguments:
         metadata={"help": "Whether or not to use sharded DDP training (in distributed training only)."},
     )
 
-    """以下为自定义的超参"""
+
+    """以下为我们整合后的所有自定义超参（最终版）"""
+    # --- 我们根据SOP标准添加/修改的超参 ---
+    data_dir: str = field(default="./data", metadata={"help": "The input data dir."})
+    dataset: str = field(default="banking", metadata={"help": "The name of the dataset to use."})
+    known_cls_ratio: float = field(default=0.25, metadata={"help": "The ratio of known classes."})
+    labeled_ratio: float = field(default=1.0, metadata={"help": "The ratio of labeled data to use."})
+    fold_idx: int = field(default=0, metadata={"help": "The index of the fold for cross-validation."})
+    fold_num: int = field(default=5, metadata={"help": "The total number of folds for cross-validation."})
+    gpu_id: str = field(default="0", metadata={"help": "The GPU ID to use."})
+    
+    # --- KnnCon原有的全部自定义参数 ---
     fitlog_dir: str = field(default="./logs")
     multi_head_num: int = field(default=32)
     sample_file: str = field(default="")
@@ -407,17 +421,10 @@ class TrainingArguments:
     load_trained_model: bool = field(default=False)
     load_model_pattern: str = field(default="ContrastiveModel")
     num_labels: int = field(default=2)
-    known_ratio: float = field(default=0.25)
-    data: str = field(default="banking")
-
     lmcl: bool = field(default=False)
     cl_model: str = field(default='')
-    ## number of layer size
     rnn_number_layers: int = field(default=1)
-
-    sup_cont: bool = field(
-        default=False, metadata={"help": "supervised contrastive learning!"}
-    )
+    sup_cont: bool = field(default=False, metadata={"help": "supervised contrastive learning!"})
     supcont_pre_epoches: int = field(default=10)
     ind_pre_epoches: int = field(default=20)
     norm_coef: float = field(default=0.1)
@@ -428,6 +435,14 @@ class TrainingArguments:
     mode: str = field(default='both')
     temperature: float = field(default=0.3)
     auto_th: float = field(default=25)
+    negative_num: int = field(default=96)
+    positive_num: int = field(default=3)
+    queue_size: int = field(default=32000)
+    top_k: int = field(default=20)
+    end_k: int = field(default=1)
+    m: float = field(default=0.999)
+    contrastive_rate_in_training: float = field(default=0.1)
+    contrastive_rate_in_inference: float = field(default=0.1)
 
     def __post_init__(self):
         if self.disable_tqdm is None:
@@ -483,13 +498,12 @@ class TrainingArguments:
         return eval_batch_size
 
     @cached_property
-    @torch_required
     def _setup_devices(self) -> Tuple["torch.device", int]:
         logger.info("PyTorch: setting up devices")
         if self.no_cuda:
             device = torch.device("cpu")
             n_gpu = 0
-        elif is_torch_tpu_available():
+        elif False:
             device = xm.xla_device()
             n_gpu = 0
         elif self.local_rank == -1:
@@ -514,7 +528,6 @@ class TrainingArguments:
         return device, n_gpu
 
     @property
-    @torch_required
     def device(self) -> "torch.device":
         """
         The device used by this process.
@@ -522,7 +535,6 @@ class TrainingArguments:
         return self._setup_devices[0]
 
     @property
-    @torch_required
     def n_gpu(self):
         """
         The number of GPUs used by this process.
@@ -534,7 +546,6 @@ class TrainingArguments:
         return self._setup_devices[1]
 
     @property
-    @torch_required
     def parallel_mode(self):
         """
         The current mode used for parallelism if multiple GPUs/TPU cores are available. One of:
@@ -545,9 +556,9 @@ class TrainingArguments:
           :obj:`torch.nn.DistributedDataParallel`).
         - :obj:`ParallelMode.TPU`: several TPU cores.
         """
-        if is_torch_tpu_available():
-            return ParallelMode.TPU
-        elif self.local_rank != -1:
+        # if is_torch_tpu_available():
+        #     return ParallelMode.TPU
+        if self.local_rank != -1:
             return ParallelMode.DISTRIBUTED
         elif self.n_gpu > 1:
             return ParallelMode.NOT_DISTRIBUTED

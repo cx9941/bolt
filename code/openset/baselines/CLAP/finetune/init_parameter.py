@@ -139,4 +139,8 @@ def init_model():
     
     parser.add_argument("--wait_patient", default=10, type=int, help="Patient steps for Early Stop.")
 
+    parser.add_argument("--output_dir", type=str, default='./outputs/openset/clap', help="Standardized output directory.")
+    parser.add_argument("--fold_idx", type=int, default=0, help="The index of the fold for cross-validation.")
+    parser.add_argument("--fold_num", type=int, default=5, help="The total number of folds for cross-validation.")
+
     return parser
