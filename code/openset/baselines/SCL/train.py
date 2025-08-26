@@ -179,8 +179,14 @@ def load_and_process_data_for_scl(args):
     n_class_seen = len(y_cols_seen)
     print(f"Loaded {n_class_seen} known classes.")
 
+    # 2.5 (新增步骤) 先对 train_df 和 dev_df 进行完整筛选
+    train_df_filtered = train_df[(train_df['label'].isin(y_cols_seen)) & (train_df['labeled'].astype(bool))]
+    dev_df_filtered = dev_df[(dev_df['label'].isin(y_cols_seen)) & (dev_df['labeled'].astype(bool))]
+
+
     # 3. (关键修改) 仅在训练集上构建词汇表，防止数据泄露
-    train_texts = train_df['text'].astype(str).apply(lambda s: " ".join(word_tokenize(s)))
+    # train_texts = train_df['text'].astype(str).apply(lambda s: " ".join(word_tokenize(s)))
+    train_texts = train_df_filtered['text'].astype(str).apply(lambda s: " ".join(word_tokenize(s)))
     tokenizer = Tokenizer(num_words=args.max_num_words, oov_token="<UNK>", filters='!"#$%&()*+-/:;<=>@[\]^_`{|}~')
     tokenizer.fit_on_texts(train_texts)
     word_index = tokenizer.word_index
@@ -200,10 +206,12 @@ def load_and_process_data_for_scl(args):
     y_test = test_df.label
 
     # 5. 按照已知/未知类别划分数据集索引 (保留SCL原有逻辑)
-    train_seen_idx = y_train[y_train.isin(y_cols_seen)].index
+    train_seen_idx = train_df_filtered.index
     train_ood_idx = y_train[y_train.isin(y_cols_unseen)].index
-    valid_seen_idx = y_valid[y_valid.isin(y_cols_seen)].index
+    
+    valid_seen_idx = dev_df_filtered.index
     valid_ood_idx = y_valid[y_valid.isin(y_cols_unseen)].index
+
     test_seen_idx = y_test[y_test.isin(y_cols_seen)].index
     test_ood_idx = y_test[y_test.isin(y_cols_unseen)].index
 

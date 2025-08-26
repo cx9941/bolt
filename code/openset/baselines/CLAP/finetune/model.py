@@ -60,14 +60,24 @@ def function_cal(x, y, temperature, kccl_euc=0, ks=1, km=0):
         return torch.exp((torch.div(torch.bmm(x, y.permute(0, 2, 1)), temperature) - km) * ks)
 
 
-def kccl_loss(pooled_output, labels, k, temperature, neg_num=1, weight=None, loss_metric=0, neg_method=0, centroids=None, kccl_euc=0, ks=1, km=0):
+def kccl_loss(pooled_output, labels, k, temperature, neg_num=1, weight=None, metric_type=0, neg_method=0, centroids=None, kccl_euc=0, ks=1, km=0):
     features = torch.cat((pooled_output, labels.unsqueeze(1)), 1)
     B, H = pooled_output.shape
+    # 1. 把重塑逻辑移到 if 语句外面，确保它总是被执行
+    #    这样 pooled_output 总是从 2D -> 3D
+    pooled_output = pooled_output.view(-1, 1 + k + neg_num, H)
+
+    # 2. 修改 if 语句块内的逻辑，现在它只负责切分数据
     if neg_method in [3, 6]:
-        pooled_output = pooled_output.view(-1, 1 + k + neg_num, H)  
         labels = labels.view(-1, 1 + k + neg_num)                   
         neg_examples = pooled_output[:, (1 + k):, :]                
         pooled_output = pooled_output[:, :(1 + k), :]               
+    else:
+        # 添加一个 else 分支来处理其他情况
+        # 假设在其他情况下，负例就是最后 neg_num 个
+        neg_examples = pooled_output[:, (1 + k):, :]
+        # 并且原始样本和正例是前面 1+k 个
+        pooled_output = pooled_output[:, :(1 + k), :]         
             
     pos = function_cal(pooled_output, pooled_output, temperature, kccl_euc, ks, km)  
     neg1 = function_cal(pooled_output, neg_examples, temperature, kccl_euc, ks, 0)  
@@ -80,12 +90,12 @@ def kccl_loss(pooled_output, labels, k, temperature, neg_num=1, weight=None, los
     pos_neg = pos_neg - pos * 2
     neg = pos + neg2 + neg2.permute(0, 2, 1) + pos_neg
     loss_a = - torch.log(torch.div(pos, neg))
-    if loss_metric == 0:
+    if metric_type == 0:
         for i in range(loss_a.shape[1]):
             loss_a[:, i, i] = 0
         loss_b = torch.sum(torch.sum(loss_a, dim=1))
         loss = loss_b / (pooled_output.shape[0] * k * (k + 1))
-    elif loss_metric == 1:
+    elif metric_type == 1:
         for i in range(loss_a.shape[1]):
             for j in range(loss_a.shape[2]):
                 if i >= j:
@@ -141,7 +151,7 @@ class BertForModel(BertPreTrainedModel):
             if mode == 'train':
                 if labels is not None:
                     loss_1 = kccl_loss(pooled_output, labels, args.kccl_k, args.temperature, args.neg_num, self.weight,
-                                        args.loss_metric, args.neg_method, centroids, args.kccl_euc, args.ks, args.km)
+                                        args.metric_type, args.neg_method, centroids, args.kccl_euc, args.ks, args.km)
                     loss_2 = nn.CrossEntropyLoss()(logits, labels)
                     loss = loss_1 * args.KCCL_LOSS_LAMBDA + loss_2 * args.CE_LOSS_LAMBDA
                 return loss, pooled_output, logits

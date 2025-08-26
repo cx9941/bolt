@@ -158,8 +158,9 @@ def load_datasets(data_args: DataTrainingArguments) -> DatasetDict:
     seen_labels = pd.read_csv(known_label_path, header=None)[0].tolist()
 
     # 5. (保留原逻辑) 使用新的 seen_labels 列表来筛选和划分数据
-    df_train_seen: pd.DataFrame = df_train[df_train.label.isin(seen_labels)]
-    df_valid_seen: pd.DataFrame = df_valid[df_valid.label.isin(seen_labels)]
+    # 训练集和验证集：必须是已知类别 & 已标注
+    df_train_seen: pd.DataFrame = df_train[(df_train.label.isin(seen_labels)) & (df_train['labeled'].astype(bool))]
+    df_valid_seen: pd.DataFrame = df_valid[(df_valid.label.isin(seen_labels)) & (df_valid['labeled'].astype(bool))]
     df_valid_oos: pd.DataFrame = df_valid[~df_valid.label.isin(seen_labels)]
 
     df_valid_oos.loc[:, "label"] = 'oos'

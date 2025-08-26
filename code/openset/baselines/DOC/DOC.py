@@ -86,10 +86,9 @@ def load_and_process_data(args):
     dev_df = labeled_dev_df
     dev_df['text'] = origin_dev_df['text']
 
-    # 3. 筛选数据 (此部分逻辑不变)
-    # 训练集和验证集只包含已知类
-    train_df = train_df[train_df['label'].isin(seen_classes)]
-    dev_df = dev_df[dev_df['label'].isin(seen_classes)]
+    # 3. 筛选数据
+    train_df = train_df[(train_df['label'].isin(seen_classes)) & (train_df['labeled'])]
+    dev_df = dev_df[(dev_df['label'].isin(seen_classes)) & (dev_df['labeled'])]
     
     # 测试集分为已知类和未知类
     seen_test_df = test_df[test_df['label'].isin(seen_classes)]

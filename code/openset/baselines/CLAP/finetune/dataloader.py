@@ -36,10 +36,15 @@ class Data:
         origin_eval_df = pd.read_csv(origin_eval_path, sep='\t')
         origin_test_df = pd.read_csv(origin_test_path, sep='\t')
         labeled_train_df = pd.read_csv(labeled_train_path, sep='\t')
+
+        labeled_eval_path = os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'dev.tsv')
+        labeled_eval_df = pd.read_csv(labeled_eval_path, sep='\t')
         
         # 3. 组合文本和标签信息
         df_train = labeled_train_df
         df_train['text'] = origin_train_df['text']
+        df_eval = labeled_eval_df
+        df_eval['text'] = origin_eval_df['text']
         
         # 4. 从标准化的.list文件加载已知类
         known_label_path = os.path.join(
@@ -54,9 +59,9 @@ class Data:
         self.num_labels = len(self.known_label_list)
 
         # 5. 筛选数据，构建examples
-        # Finetune阶段的训练集和验证集只使用已知类
-        train_examples_df = df_train[df_train.label.isin(self.known_label_list)]
-        eval_examples_df = origin_eval_df[origin_eval_df.label.isin(self.known_label_list)]
+        train_examples_df = df_train[(df_train.label.isin(self.known_label_list)) & (df_train['labeled'].astype(bool))]
+        eval_examples_df = df_eval[(df_eval.label.isin(self.known_label_list)) & (df_eval['labeled'].astype(bool))]
+
         
         # 测试集包含所有类别，用于后续阶段
         test_examples_df = origin_test_df

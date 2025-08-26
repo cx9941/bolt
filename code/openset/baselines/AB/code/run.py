@@ -47,10 +47,10 @@ def main(args):
     df_train = labeled_train_df
     df_train['text'] = origin_train_df['text']
 
-    # c. 筛选数据，构建符合旧代码格式的列表 list([sentence, label])
-    # 训练集只包含已知类
-    train_data = [list(row) for row in df_train[df_train['label'].isin(seen_labels)][['text', 'label']].itertuples(index=False)]
-    
+    # c. 筛选数据
+    df_train_filtered = df_train[(df_train['label'].isin(seen_labels)) & (df_train['labeled'].astype(bool))]
+    train_data = [list(row) for row in df_train_filtered[['text', 'label']].itertuples(index=False)]
+
     # 测试集包含已知类和未知类 (未知类标签设为'oos')
     df_test.loc[~df_test['label'].isin(seen_labels), 'label'] = 'oos'
     test_data = [list(row) for row in df_test[['text', 'label']].itertuples(index=False)]

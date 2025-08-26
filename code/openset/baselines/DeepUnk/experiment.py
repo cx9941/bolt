@@ -40,15 +40,18 @@ def main(args):
     origin_test_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'origin_data', 'test.tsv'), sep='\t')
     
     labeled_train_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'train.tsv'), sep='\t')
+    labeled_valid_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'dev.tsv'), sep='\t')
+
     
     df_train = labeled_train_df
     df_train['text'] = origin_train_df['text']
-    df_valid = origin_valid_df # 使用完整的 dev.tsv 作为验证集
+    df_valid = labeled_valid_df # 使用完整的 dev.tsv 作为验证集
+    df_valid['text'] = origin_valid_df['text']
     df_test = origin_test_df  # 使用完整的 test.tsv 作为测试集
 
     # c. 筛选数据
-    train_seen_df = df_train[df_train['label'].isin(seen_labels)]
-    valid_seen_df = df_valid[df_valid['label'].isin(seen_labels)]
+    train_seen_df = df_train[(df_train['label'].isin(seen_labels)) & (df_train['labeled'])]
+    valid_seen_df = df_valid[(df_valid['label'].isin(seen_labels)) & (df_valid['labeled'])]
     
     all_labels = df_train['label'].unique().tolist()
     y_cols_unseen = [l for l in all_labels if l not in seen_labels]

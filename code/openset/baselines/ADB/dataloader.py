@@ -70,7 +70,7 @@ class Data:
                 ]
             else:
                 final_data = merged_data[
-                    (merged_data['label'].isin(self.known_label_list)) & (merged_data['labeled'])
+                    (merged_data['label'].isin(self.known_label_list))
                 ]
 
             # 将筛选后的 DataFrame 转换为 InputExample 对象列表

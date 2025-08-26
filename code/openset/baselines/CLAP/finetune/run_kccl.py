@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from model import *
 from init_parameter import *
+from init_parameter import init_model
 from dataloader import *
 from pretrain import *
 from util import *
@@ -426,36 +427,13 @@ if __name__ == '__main__':
     start_time = datetime.now()
 
     print(datetime.now(), ' Data and Parameters Initialization...')
-    # 1. 解析参数
-    # init_model 来自我们已经改造过的 init_parameter.py
-    # 但为了兼容我们的.sh脚本，我们需要在这里重新定义argparse
-    parser = argparse.ArgumentParser()
-    # 添加所有在 1_finetune.yaml 中定义的参数
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--gpu_id", type=str, default="0")
-    parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--data_dir", type=str, required=True)
-    parser.add_argument("--known_cls_ratio", type=float, required=True)
-    parser.add_argument("--labeled_ratio", type=float, required=True)
-    parser.add_argument("--fold_idx", type=int, required=True)
-    parser.add_argument("--fold_num", type=int, required=True)
-    parser.add_argument("--bert_base_model", type=str, required=True)
-    parser.add_argument("--max_seq_length", type=int, default=128)
-    parser.add_argument("--pretrain_lr", type=float, required=True)
-    parser.add_argument("--train_batch_size", type=int, required=True)
-    parser.add_argument("--eval_batch_size", type=int, required=True)
-    parser.add_argument("--num_pretrain_epochs", type=float, required=True)
-    parser.add_argument("--kccl_k", type=int, required=True)
-    parser.add_argument("--temperature", type=float, required=True)
-    parser.add_argument("--KCCL_LOSS_LAMBDA", type=float, required=True)
-    parser.add_argument("--CE_LOSS_LAMBDA", type=float, required=True)
-    parser.add_argument("--metric_type", type=int, required=True)
-    parser.add_argument("--output_dir", type=str, required=True)
-    # 添加一个旧代码依赖但我们YAML里没有的参数，给个默认值
-    parser.add_argument("--model_type", type=str, default='bert')
-    parser.add_argument("--neg_num", type=int, default=5)
-
+    # ===================== 修改开始 =====================
+    # 1. 直接调用 init_model() 来获取一个已经配置好所有参数的 parser
+    parser = init_model()
+    
+    # 2. 解析参数，这一步和原来一样
     args = parser.parse_args()
+    # ===================== 修改结束 =====================
 
     # 2. 设置标准化的输出路径
     args.pretrain_model_path = os.path.join(args.output_dir, 'finetuned_model')
