@@ -1,0 +1,12 @@
+NUM:count
+NUM:period
+NUM:perc
+LOC:city
+NUM:speed
+LOC:country
+ENTY:veh
+HUM:gr
+ENTY:instru
+NUM:code
+ENTY:product
+NUM:other

@@ -1,0 +1,491 @@
+text	label
+How far is it from Denver to Aspen ?	NUM:dist
+What county is Modesto , California in ?	ENTY:termeq
+Who was Galileo ?	ENTY:letter
+What is an atom ?	ENTY:dismed
+When did Hawaii become a state ?	ENTY:event
+How tall is the Sears Building ?	NUM:dist
+George Bush purchased a small interest in which baseball team ?	ENTY:cremat
+What is Australia 's national flower ?	HUM:title
+Why does the moon turn orange ?	ENTY:food
+What is autism ?	ENTY:dismed
+What city had a world fair in 1900 ?	ENTY:termeq
+What person 's head is on a dime ?	ENTY:color
+What is the average weight of a Yellow Labrador ?	NUM:perc
+Who was the first man to fly across the Pacific Ocean ?	ENTY:color
+When did Idaho become a state ?	ENTY:event
+What is the life expectancy for crickets ?	ENTY:plant
+What metal has the highest melting point ?	HUM:gr
+Who developed the vaccination against polio ?	ENTY:color
+What is epilepsy ?	ENTY:dismed
+What year did the Titanic sink ?	ENTY:event
+Who was the first American to walk in space ?	ENTY:color
+What is a biosphere ?	ENTY:dismed
+What river in the US is known as the Big Muddy ?	ENTY:plant
+What is bipolar disorder ?	ENTY:dismed
+What is cholesterol ?	ENTY:dismed
+Who developed the Macintosh computer ?	ENTY:color
+What is caffeine ?	ENTY:dismed
+What imaginary line is halfway between the North and South Poles ?	ENTY:plant
+Where is John Wayne airport ?	ENTY:plant
+What hemisphere is the Philippines in ?	ENTY:plant
+What is the average speed of the horses at the Kentucky Derby ?	LOC:other
+Where are the Rocky Mountains ?	DESC:def
+What are invertebrates ?	ENTY:dismed
+What is the temperature at the center of the earth ?	NUM:money
+When did John F. Kennedy get elected as President ?	ENTY:event
+How old was Elvis Presley when he died ?	DESC:reason
+Where is the Orinoco River ?	ENTY:plant
+How far is the service line from the net in tennis ?	NUM:dist
+How much fiber should you have per day ?	ENTY:other
+How many Great Lakes are there ?	ENTY:other
+Material called linen is made from what plant ?	HUM:title
+What is Teflon ?	ENTY:dismed
+What is amitriptyline ?	ENTY:dismed
+What is a shaman ?	ENTY:dismed
+What is the proper name for a female walrus ?	ENTY:animal
+What is a group of turkeys called ?	ENTY:animal
+How long did Rip Van Winkle sleep ?	DESC:reason
+What are triglycerides ?	ENTY:dismed
+How many liters in a gallon ?	ENTY:other
+What is the name of the chocolate company in San Francisco ?	ENTY:cremat
+Who discovered x-rays ?	ENTY:color
+Which comedian 's signature line is `` Can we talk '' ?	ENTY:color
+What is fibromyalgia ?	ENTY:dismed
+What is done with worn or outdated flags ?	ENTY:letter
+What does cc in engines mean ?	ENTY:dismed
+When did Elvis Presley die ?	ENTY:event
+What is the capital of Yugoslavia ?	ENTY:termeq
+Where is Milan ?	ENTY:termeq
+What is the speed hummingbirds fly ?	LOC:other
+What is the oldest city in the United States ?	ENTY:termeq
+What was W.C. Fields ' real name ?	ENTY:color
+What river flows between Fargo , North Dakota and Moorhead , Minnesota ?	ENTY:plant
+What do bats eat ?	ENTY:sport
+What state did the Battle of Bighorn take place in ?	ENTY:lang
+Who was Abraham Lincoln ?	ENTY:letter
+What do you call a newborn kangaroo ?	ENTY:techmeth
+What are spider veins ?	ENTY:dismed
+What day and month did John Lennon die ?	ENTY:event
+What strait separates North America from Asia ?	ENTY:plant
+What is the population of Seattle ?	ENTY:plant
+How much was a ticket for the Titanic ?	DESC:desc
+What American composer wrote the music for `` West Side Story '' ?	ENTY:color
+Where is the Mall of the America ?	ENTY:plant
+What is the pH scale ?	ENTY:dismed
+What type of currency is used in Australia ?	NUM:speed
+How tall is the Gateway Arch in St. Louis , MO ?	NUM:dist
+How much does the human adult female brain weigh ?	NUM:perc
+Who was the first governor of Alaska ?	ENTY:color
+What is a prism ?	ENTY:dismed
+When was the first liver transplant ?	ENTY:event
+Who was elected president of South Africa in 1994 ?	ENTY:color
+What is the population of China ?	ENTY:plant
+When was Rosa Parks born ?	ENTY:event
+Why is a ladybug helpful ?	ENTY:food
+What is amoxicillin ?	ENTY:dismed
+Who was the first female United States Representative ?	ENTY:color
+What are xerophytes ?	ENTY:dismed
+What country did Ponce de Leon come from ?	ENTY:substance
+The U.S. Department of Treasury first issued paper currency for the U.S. during which war ?	ENTY:instru
+What is desktop publishing ?	ENTY:dismed
+What is the temperature of the sun 's surface ?	NUM:money
+What year did Canada join the United Nations ?	ENTY:event
+What is the oldest university in the US ?	ENTY:cremat
+Where is Prince Edward Island ?	ENTY:plant
+Mercury , what year was it discovered ?	ENTY:event
+What is cryogenics ?	ENTY:dismed
+What are coral reefs ?	ENTY:dismed
+What is the longest major league baseball-winning streak ?	ENTY:plant
+What is neurology ?	ENTY:dismed
+Who invented the calculator ?	ENTY:color
+How do you measure earthquakes ?	ABBR:abb
+Who is Duke Ellington ?	ENTY:letter
+What county is Phoenix , AZ in ?	ENTY:termeq
+What is a micron ?	ENTY:dismed
+The sun 's core , what is the temperature ?	NUM:money
+What is the Ohio state bird ?	ENTY:animal
+When were William Shakespeare 's twins born ?	ENTY:event
+What is the highest dam in the U.S. ?	ENTY:plant
+What color is a poison arrow frog ?	ENTY:symbol
+What is acupuncture ?	ENTY:dismed
+What is the length of the coastline of the state of Alaska ?	NUM:dist
+What is the name of Neil Armstrong 's wife ?	ENTY:color
+What is Hawaii 's state flower ?	HUM:title
+Who won Ms. American in 1989 ?	ENTY:color
+When did the Hindenberg crash ?	ENTY:event
+What mineral helps prevent osteoporosis ?	HUM:gr
+What was the last year that the Chicago Cubs won the World Series ?	ENTY:event
+Where is Perth ?	ENTY:plant
+What year did WWII begin ?	ENTY:event
+What is the diameter of a golf ball ?	NUM:dist
+What is an eclipse ?	ENTY:dismed
+Who discovered America ?	ENTY:color
+What is the earth 's diameter ?	NUM:dist
+Which president was unmarried ?	ENTY:color
+How wide is the Milky Way galaxy ?	NUM:dist
+During which season do most thunderstorms occur ?	ENTY:event
+What is Wimbledon ?	ENTY:dismed
+What is the gestation period for a cat ?	DESC:reason
+How far is a nautical mile ?	NUM:dist
+Who was the abolitionist who led the raid on Harper 's Ferry in 1859 ?	ENTY:color
+What does target heart rate mean ?	ENTY:dismed
+What was the first satellite to go into space ?	DESC:manner
+What is foreclosure ?	ENTY:dismed
+What is the major fault line near Kentucky ?	ENTY:plant
+Where is the Holland Tunnel ?	ENTY:plant
+Who wrote the hymn `` Amazing Grace '' ?	ENTY:color
+What position did Willie Davis play in baseball ?	ENTY:currency
+What are platelets ?	ENTY:dismed
+What is severance pay ?	ENTY:dismed
+What is the name of Roy Roger 's dog ?	ENTY:animal
+Where are the National Archives ?	ENTY:plant
+What is a baby turkey called ?	ENTY:animal
+What is poliomyelitis ?	ENTY:dismed
+What is the longest bone in the human body ?	ENTY:veh
+Who is a German philosopher ?	ENTY:color
+What were Christopher Columbus ' three ships ?	NUM:period
+What does Phi Beta Kappa mean ?	ENTY:dismed
+What is nicotine ?	ENTY:dismed
+What is another name for vitamin B1 ?	ENTY:techmeth
+Who discovered radium ?	ENTY:color
+What are sunspots ?	ENTY:dismed
+When was Algeria colonized ?	ENTY:event
+What baseball team was the first to make numbers part of their uniform ?	ENTY:cremat
+What continent is Egypt on ?	ENTY:plant
+What is the capital of Mongolia ?	ENTY:termeq
+What is nanotechnology ?	ENTY:dismed
+In the late 1700 's British convicts were used to populate which colony ?	ENTY:plant
+What state is the geographic center of the lower 48 states ?	ENTY:lang
+What is an obtuse angle ?	ENTY:dismed
+What are polymers ?	ENTY:dismed
+When is hurricane season in the Caribbean ?	ENTY:event
+Where is the volcano Mauna Loa ?	ENTY:plant
+What is another astronomic term for the Northern Lights ?	ENTY:techmeth
+What peninsula is Spain part of ?	ENTY:plant
+When was Lyndon B. Johnson born ?	ENTY:event
+What is acetaminophen ?	ENTY:dismed
+What state has the least amount of rain per year ?	ENTY:lang
+Who founded American Red Cross ?	ENTY:color
+What year did the Milwaukee Braves become the Atlanta Braves ?	ENTY:event
+How fast is alcohol absorbed ?	LOC:other
+When is the summer solstice ?	ENTY:event
+What is supernova ?	ENTY:dismed
+Where is the Shawnee National Forest ?	ENTY:plant
+What U.S. state 's motto is `` Live free or Die '' ?	ENTY:lang
+Where is the Lourve ?	ENTY:plant
+When was the first stamp issued ?	ENTY:event
+What primary colors do you mix to make orange ?	ENTY:symbol
+How far is Pluto from the sun ?	NUM:dist
+What body of water are the Canary Islands in ?	ENTY:plant
+What is neuropathy ?	ENTY:dismed
+Where is the Euphrates River ?	ENTY:plant
+What is cryptography ?	ENTY:dismed
+What is natural gas composed of ?	HUM:gr
+Who is the Prime Minister of Canada ?	ENTY:color
+What French ruler was defeated at the battle of Waterloo ?	ENTY:color
+Where did Howard Hughes die ?	ENTY:plant
+What is the birthstone for June ?	HUM:gr
+What is the sales tax in Minnesota ?	ENTY:plant
+What is the distance in miles from the earth to the sun ?	NUM:dist
+What is the average life span for a chicken ?	DESC:reason
+When was the first Wal-Mart store opened ?	ENTY:event
+What is relative humidity ?	ENTY:dismed
+What city has the zip code of 35824 ?	ENTY:termeq
+What currency is used in Algeria ?	NUM:speed
+Who invented the hula hoop ?	ENTY:color
+What was the most popular toy in 1957 ?	DESC:manner
+What is pastrami made of ?	HUM:gr
+What is the name of the satellite that the Soviet Union sent into space in 1957 ?	DESC:manner
+What city 's newspaper is called `` The Enquirer '' ?	ENTY:termeq
+Who invented the slinky ?	ENTY:color
+What are the animals that don 't have backbones called ?	ENTY:animal
+What is the melting point of copper ?	ENTY:plant
+Where is the volcano Olympus Mons located ?	ENTY:plant
+Who was the 23rd president of the United States ?	ENTY:color
+What is the average body temperature ?	NUM:money
+What does a defibrillator do ?	ENTY:letter
+What is the effect of acid rain ?	ENTY:letter
+What year did the United States abolish the draft ?	ENTY:event
+How fast is the speed of light ?	LOC:other
+What province is Montreal in ?	ENTY:lang
+What New York City structure is also known as the Twin Towers ?	ENTY:plant
+What is fungus ?	ENTY:dismed
+What is the most frequently spoken language in the Netherlands ?	NUM:code
+What is sodium chloride ?	ENTY:dismed
+What are the spots on dominoes called ?	ENTY:techmeth
+How many pounds in a ton ?	ENTY:other
+What is influenza ?	ENTY:dismed
+What is ozone depletion ?	ENTY:dismed
+What year was the Mona Lisa painted ?	ENTY:event
+What does `` Sitting Shiva '' mean ?	ENTY:dismed
+What is the electrical output in Madrid , Spain ?	ENTY:plant
+Which mountain range in North America stretches from Maine to Georgia ?	DESC:def
+What is plastic made of ?	HUM:gr
+What is the population of Nigeria ?	ENTY:plant
+What does your spleen do ?	ENTY:letter
+Where is the Grand Canyon ?	ENTY:plant
+Who invented the telephone ?	ENTY:color
+What year did the U.S. buy Alaska ?	ENTY:event
+What is the name of the leader of Ireland ?	ENTY:color
+What is phenylalanine ?	ENTY:dismed
+How many gallons of water are there in a cubic foot ?	ENTY:other
+What are the two houses of the Legislative branch ?	ENTY:plant
+What is sonar ?	ENTY:dismed
+In Poland , where do most people live ?	ENTY:plant
+What is phosphorus ?	ENTY:dismed
+What is the location of the Sea of Tranquility ?	ENTY:plant
+How fast is sound ?	LOC:other
+What French province is cognac produced in ?	ENTY:lang
+What is Valentine 's Day ?	ENTY:dismed
+What causes gray hair ?	ENTY:food
+What is hypertension ?	ENTY:dismed
+What is bandwidth ?	ENTY:dismed
+What is the longest suspension bridge in the U.S. ?	ENTY:plant
+What is a parasite ?	ENTY:dismed
+What is home equity ?	ENTY:dismed
+What do meteorologists do ?	ENTY:letter
+What is the criterion for being legally blind ?	ENTY:plant
+Who is the tallest man in the world ?	ENTY:color
+What are the twin cities ?	ENTY:termeq
+What did Edward Binney and Howard Smith invent in 1903 ?	ENTY:plant
+What is the statue of liberty made of ?	HUM:gr
+What is pilates ?	ENTY:dismed
+What planet is known as the `` red '' planet ?	ENTY:plant
+What is the depth of the Nile river ?	NUM:dist
+What is the colorful Korean traditional dress called ?	ENTY:techmeth
+What is Mardi Gras ?	ENTY:dismed
+Mexican pesos are worth what in U.S. dollars ?	DESC:desc
+Who was the first African American to play for the Brooklyn Dodgers ?	ENTY:color
+Who was the first Prime Minister of Canada ?	ENTY:color
+How many Admirals are there in the U.S. Navy ?	ENTY:other
+What instrument did Glenn Miller play ?	LOC:country
+How old was Joan of Arc when she died ?	DESC:reason
+What does the word fortnight mean ?	ENTY:dismed
+What is dianetics ?	ENTY:dismed
+What is the capital of Ethiopia ?	ENTY:termeq
+For how long is an elephant pregnant ?	DESC:reason
+How did Janice Joplin die ?	ABBR:abb
+What is the primary language in Iceland ?	NUM:code
+What is the difference between AM radio stations and FM radio stations ?	ENTY:letter
+What is osteoporosis ?	ENTY:dismed
+Who was the first woman governor in the U.S. ?	ENTY:color
+What is peyote ?	ENTY:dismed
+What is the esophagus used for ?	ENTY:food
+What year did Oklahoma become a state ?	ENTY:event
+What is the abbreviation for Texas ?	LOC:mount
+What is a mirror made out of ?	HUM:gr
+Where on the body is a mortarboard worn ?	ENTY:plant
+What was J.F.K. 's wife 's name ?	ENTY:color
+What does I.V. stand for ?	ENTY:body
+What is the chunnel ?	ENTY:dismed
+Where is Hitler buried ?	ENTY:plant
+What are antacids ?	ENTY:dismed
+What is pulmonary fibrosis ?	ENTY:dismed
+What are Quaaludes ?	ENTY:dismed
+What is naproxen ?	ENTY:dismed
+What is strep throat ?	ENTY:dismed
+What is the largest city in the U.S. ?	ENTY:termeq
+What is foot and mouth disease ?	ENTY:word
+What is the life expectancy of a dollar bill ?	ENTY:plant
+What do you call a professional map drawer ?	ENTY:techmeth
+What are Aborigines ?	ENTY:dismed
+What is hybridization ?	ENTY:dismed
+What color is indigo ?	ENTY:symbol
+How old do you have to be in order to rent a car in Italy ?	DESC:reason
+What does a barometer measure ?	ENTY:plant
+What color is a giraffe 's tongue ?	ENTY:symbol
+What does USPS stand for ?	ENTY:body
+What year did the NFL go on strike ?	ENTY:event
+What is solar wind ?	ENTY:dismed
+What date did Neil Armstrong land on the moon ?	ENTY:event
+When was Hiroshima bombed ?	ENTY:event
+Where is the Savannah River ?	ENTY:plant
+Who was the first woman killed in the Vietnam War ?	ENTY:color
+What planet has the strongest magnetic field of all the planets ?	ENTY:plant
+Who is the governor of Alaska ?	ENTY:color
+What year did Mussolini seize power in Italy ?	ENTY:event
+What is the capital of Persia ?	ENTY:termeq
+Where is the Eiffel Tower ?	ENTY:plant
+What is pneumonia ?	ENTY:dismed
+What is the deepest lake in the US ?	ENTY:plant
+What is a fuel cell ?	ENTY:dismed
+Who was the first U.S. president to appear on TV ?	ENTY:color
+Where is the Little League Museum ?	ENTY:plant
+What are the two types of twins ?	ENTY:plant
+What is the brightest star ?	ENTY:plant
+When was President Kennedy shot ?	ENTY:event
+What is TMJ ?	ENTY:body
+What color is yak milk ?	ENTY:symbol
+What date was Dwight D. Eisenhower born ?	ENTY:event
+What does the technical term ISDN mean ?	ENTY:body
+Why is the sun yellow ?	ENTY:food
+What is the conversion rate between dollars and pounds ?	DESC:desc
+When was Abraham Lincoln born ?	ENTY:event
+What is mold ?	ENTY:dismed
+What year was Mozart born ?	ENTY:event
+What is a group of frogs called ?	ENTY:animal
+What is the name of William Penn 's ship ?	NUM:period
+What is the melting point of gold ?	ENTY:plant
+What is the street address of the White House ?	ENTY:plant
+What is semolina ?	ENTY:dismed
+What fruit is Melba sauce made from ?	ENTY:sport
+What is Ursa Major ?	ENTY:dismed
+What is the percentage of water content in the human body ?	NUM:count
+How much does water weigh ?	NUM:perc
+What was President Lyndon Johnson 's reform program called ?	ENTY:instru
+What is the murder rate in Windsor , Ontario ?	NUM:count
+Who is the only president to serve 2 non-consecutive terms ?	ENTY:color
+What is the population of Australia ?	ENTY:plant
+Who painted the ceiling of the Sistine Chapel ?	ENTY:color
+Name a stimulant .	ENTY:word
+What is the effect of volcanoes on the climate ?	ENTY:letter
+What year did the Andy Griffith show begin ?	ENTY:event
+What is acid rain ?	ENTY:dismed
+What is the date of Mexico 's independence ?	ENTY:event
+What is the location of Lake Champlain ?	ENTY:plant
+What is the Illinois state flower ?	HUM:title
+What is Maryland 's state bird ?	ENTY:animal
+What is quicksilver ?	ENTY:dismed
+Who wrote `` The Divine Comedy '' ?	ENTY:color
+What is the speed of light ?	LOC:other
+What is the width of a football field ?	NUM:dist
+Why in tennis are zero points called love ?	ENTY:food
+What kind of dog was Toto in the Wizard of Oz ?	ENTY:animal
+What is a thyroid ?	ENTY:dismed
+What does ciao mean ?	ENTY:dismed
+What is the only artery that carries blue blood from the heart to the lungs ?	ENTY:veh
+How often does Old Faithful erupt at Yellowstone National Park ?	ENTY:plant
+What is acetic acid ?	ENTY:dismed
+What is the elevation of St. Louis , MO ?	NUM:dist
+What color does litmus paper turn when it comes into contact with a strong acid ?	ENTY:symbol
+What are the colors of the German flag ?	ENTY:symbol
+What is the Moulin Rouge ?	ENTY:dismed
+What soviet seaport is on the Black Sea ?	ENTY:plant
+What is the atomic weight of silver ?	NUM:perc
+What currency do they use in Brazil ?	NUM:speed
+What are pathogens ?	ENTY:dismed
+What is mad cow disease ?	ENTY:dismed
+Name a food high in zinc .	ENTY:sport
+When did North Carolina enter the union ?	ENTY:event
+Where do apple snails live ?	ENTY:plant
+What are ethics ?	ENTY:dismed
+What is an annuity ?	ENTY:dismed
+Who killed John F. Kennedy ?	ENTY:color
+Who was the first vice president of the U.S. ?	ENTY:color
+What birthstone is turquoise ?	HUM:gr
+Who was the first US President to ride in an automobile to his inauguration ?	ENTY:color
+How old was the youngest president of the United States ?	DESC:reason
+When was Ulysses S. Grant born ?	ENTY:event
+What is Muscular Dystrophy ?	ENTY:dismed
+Who lived in the Neuschwanstein castle ?	ENTY:color
+What is propylene glycol ?	ENTY:dismed
+What is a panic disorder ?	ENTY:dismed
+Who invented the instant Polaroid camera ?	ENTY:color
+What is a carcinogen ?	ENTY:dismed
+What is a baby lion called ?	ENTY:animal
+What is the world 's population ?	ENTY:plant
+What is nepotism ?	ENTY:dismed
+What is die-casting ?	ENTY:dismed
+What is myopia ?	ENTY:dismed
+What is the sales tax rate in New York ?	ENTY:plant
+Developing nations comprise what percentage of the world 's population ?	NUM:count
+What is the fourth highest mountain in the world ?	DESC:def
+What is Shakespeare 's nickname ?	ENTY:color
+What is the heaviest naturally occurring element ?	HUM:gr
+When is Father 's Day ?	ENTY:event
+What does the acronym NASA stand for ?	ENTY:body
+How long is the Columbia River in miles ?	NUM:dist
+What city 's newspaper is called `` The Star '' ?	ENTY:termeq
+What is carbon dioxide ?	ENTY:dismed
+Where is the Mason/Dixon line ?	ENTY:plant
+When was the Boston tea party ?	ENTY:event
+What is metabolism ?	ENTY:dismed
+Which U.S.A. president appeared on `` Laugh-In '' ?	ENTY:color
+What are cigarettes made of ?	HUM:gr
+What is the capital of Zimbabwe ?	ENTY:termeq
+What is the state flower of Michigan ?	HUM:title
+What are semiconductors ?	ENTY:dismed
+What is nuclear power ?	ENTY:dismed
+What is a tsunami ?	ENTY:dismed
+Who is the congressman from state of Texas on the armed forces committee ?	ENTY:color
+Who was president in 1913 ?	ENTY:color
+When was the first kidney transplant ?	ENTY:event
+What are Canada 's two territories ?	ENTY:plant
+What was the name of the plane Lindbergh flew solo across the Atlantic ?	NUM:period
+What is genocide ?	ENTY:dismed
+What continent is Argentina on ?	ENTY:plant
+What monastery was raided by Vikings in the late eighth century ?	ENTY:plant
+What is an earthquake ?	ENTY:dismed
+Where is the tallest roller coaster located ?	ENTY:plant
+What are enzymes ?	ENTY:dismed
+Who discovered oxygen ?	ENTY:color
+What is bangers and mash ?	ENTY:dismed
+What is the name given to the Tiger at Louisiana State University ?	ENTY:animal
+Where are the British crown jewels kept ?	ENTY:plant
+Who was the first person to reach the North Pole ?	ENTY:color
+What is an ulcer ?	ENTY:dismed
+What is vertigo ?	ENTY:dismed
+What is the spirometer test ?	ENTY:dismed
+When is the official first day of summer ?	ENTY:event
+What does the abbreviation SOS mean ?	ENTY:body
+What is the smallest bird in Britain ?	ENTY:animal
+Who invented Trivial Pursuit ?	ENTY:color
+What gasses are in the troposphere ?	HUM:gr
+Which country has the most water pollution ?	ENTY:substance
+What is the scientific name for elephant ?	ENTY:animal
+Who is the actress known for her role in the movie `` Gypsy '' ?	ENTY:color
+What breed of hunting dog did the Beverly Hillbillies own ?	ENTY:animal
+What is the rainiest place on Earth ?	ENTY:plant
+Who was the first African American to win the Nobel Prize in literature ?	ENTY:color
+When is St. Patrick 's Day ?	ENTY:event
+What was FDR 's dog 's name ?	ENTY:animal
+What colors need to be mixed to get the color pink ?	ENTY:symbol
+What is the most popular sport in Japan ?	HUM:ind
+What is the active ingredient in baking soda ?	ENTY:sport
+When was Thomas Jefferson born ?	ENTY:event
+How cold should a refrigerator be ?	NUM:money
+When was the telephone invented ?	ENTY:event
+What is the most common eye color ?	ENTY:symbol
+Where was the first golf course in the United States ?	ENTY:plant
+What is schizophrenia ?	ENTY:dismed
+What is angiotensin ?	ENTY:dismed
+What did Jesse Jackson organize ?	ENTY:cremat
+What is New York 's state bird ?	ENTY:animal
+What is the National Park in Utah ?	ENTY:plant
+What is Susan B. Anthony 's birthday ?	ENTY:event
+In which state would you find the Catskill Mountains ?	ENTY:lang
+What do you call a word that is spelled the same backwards and forwards ?	ENTY:techmeth
+What are pediatricians ?	ENTY:dismed
+What chain store is headquartered in Bentonville , Arkansas ?	ENTY:cremat
+What are solar cells ?	ENTY:dismed
+What is compounded interest ?	ENTY:dismed
+What are capers ?	ENTY:dismed
+What is an antigen ?	ENTY:dismed
+What currency does Luxembourg use ?	NUM:speed
+What is the population of Venezuela ?	ENTY:plant
+What type of polymer is used for bulletproof vests ?	ENTY:plant
+What currency does Argentina use ?	NUM:speed
+What is a thermometer ?	ENTY:dismed
+What Canadian city has the largest population ?	ENTY:termeq
+What color are crickets ?	ENTY:symbol
+Which country gave New York the Statue of Liberty ?	ENTY:substance
+What was the name of the first U.S. satellite sent into space ?	DESC:manner
+What precious stone is a form of pure carbon ?	HUM:gr
+What kind of gas is in a fluorescent bulb ?	HUM:gr
+What is rheumatoid arthritis ?	ENTY:dismed
+What river runs through Rowe , Italy ?	ENTY:plant
+What is cerebral palsy ?	ENTY:dismed
+What city is also known as `` The Gateway to the West '' ?	ENTY:termeq
+What is the source of natural gas ?	ENTY:plant
+In what spacecraft did U.S. astronaut Alan Shepard make his historic 1961 flight ?	NUM:period
+What is pectin ?	ENTY:dismed
+What is bio-diversity ?	ENTY:dismed
+What 's the easiest way to remove wallpaper ?	HUM:desc
+What year did the Titanic start on its journey ?	ENTY:event
+How much of an apple is water ?	ENTY:other
+Who was the 22nd President of the US ?	ENTY:color
+What is the money they use in Zambia ?	NUM:speed
+How many feet in a mile ?	ENTY:other
+What is the birthstone of October ?	HUM:gr
+What is e-coli ?	ENTY:dismed
