@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset, concatenate_datasets
 from transformers import AutoTokenizer
 
-from configs import get_plm_ood_config
+# from configs import get_plm_ood_config
 
 
 def load_and_prepare_datasets(args):
@@ -112,12 +112,3 @@ def load_and_prepare_datasets(args):
         "collate_batch": collate_batch
     }
     # -----------------
-
-
-if __name__ == '__main__':
-    config_args = get_plm_ood_config()
-    data_objects = load_and_prepare_datasets(config_args)
-    
-    print("Data loading test successful!")
-    print("Loaded objects:", list(data_objects.keys()))
-    print("Sample from train loader:", next(iter(data_objects['loader_in_train'])))

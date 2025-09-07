@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 def init_model():
     parser = ArgumentParser()
     
-    parser.add_argument("--data_dir", default='../../data', type=str,
+    parser.add_argument("--data_dir", default='../../../data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
     
     parser.add_argument("--api_key", type=str,
@@ -16,11 +16,15 @@ def init_model():
     parser.add_argument("--save_results_path", type=str, default='outputs',
                         help="The path to save results.")
     
-    parser.add_argument("--bert_model", default="../../pretrained_models/bert-base-uncased", type=str,
+    parser.add_argument("--bert_model", default="../../../pretrained_models/bert-base-uncased", type=str,
                         help="The path or name for the pre-trained bert model.")
 
-    parser.add_argument("--tokenizer", default="../../pretrained_models/bert-base-uncased", type=str,
+    parser.add_argument("--tokenizer", default="../../../pretrained_models/bert-base-uncased", type=str,
                         help="The path or name for the tokenizer")
+    
+    parser.add_argument("--max_seq_length", default=None, type=int,
+                        help="The maximum total input sequence length after tokenization. Sequences longer "
+                                "than this will be truncated, sequences shorter will be padded.")
     
     parser.add_argument("--feat_dim", default=768, type=int,
                         help="Bert feature dimension.")
@@ -98,5 +102,18 @@ def init_model():
 
     parser.add_argument("--grad_clip", default=1, type=float,
                         help="Value for gradient clipping.")
+    
+    parser.add_argument("--fold_num", default=5, type=int, 
+                        help="The total number of folds for cross-validation.")
+    
+    parser.add_argument("--fold_idx", default=0, type=int, 
+                        help="The index of the current fold.")
+    
+    parser.add_argument("--output_dir", default='./outputs', type=str, 
+                    help="The output directory where results and models will be written.")
+    
+    parser.add_argument('--pretrain_dir', type=str, default=None, 
+                    help="The base directory for saving/loading pre-trained model checkpoints.")
+
 
     return parser

@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler, TensorDataset
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+# from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+from torch.optim import AdamW
+from transformers import get_linear_schedule_with_warmup
 from transformers import AutoTokenizer, AutoModelForMaskedLM, AutoModel
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import confusion_matrix, normalized_mutual_info_score, adjusted_rand_score, accuracy_score

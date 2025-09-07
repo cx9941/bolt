@@ -7,6 +7,7 @@ set -o errexit
 GPU_ID="0"
 CONFIG_FILE="configs/openset/deepunk.yaml"
 
+# --- 批量实验循环 ---
 for seed in 0
 do
     for ratio in 0.25
@@ -15,16 +16,15 @@ do
         echo "Running DeepUnk -> Seed: ${seed}, Known Ratio: ${ratio}"
         echo "===================================================="
 
-        # 使用 parse_yaml.py 将YAML配置和循环变量转换为命令行参数
-        params=$(python tools/parse_yaml.py \
+        # --- 改造核心 ---
+        # 废弃 parse_yaml.py，直接调用主程序并传入高优先级参数
+        python code/openset/baselines/DeepUnk/experiment.py \
             --config ${CONFIG_FILE} \
             --seed ${seed} \
             --known_cls_ratio ${ratio} \
-            --gpu_id ${GPU_ID})
-
-        # 执行我们重构后的主Python脚本
-        python code/openset/baselines/DeepUnk/experiment.py ${params}
-
+            --gpu_id ${GPU_ID} \
+            --output_dir ./outputs/openset/deepunk/banking_${ratio}_${seed} # 动态生成输出目录
+        
         echo "Finished run for Seed: ${seed}, Known Ratio: ${ratio}"
     done
 done

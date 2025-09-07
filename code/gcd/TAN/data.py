@@ -3,6 +3,7 @@ from transformers import AutoTokenizer
 import random
 import os
 import numpy as np
+import pandas as pd
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 import csv
 
@@ -11,18 +12,15 @@ class Data:
 
     def __init__(self, args):
         self.set_seed(args.seed)
-        max_seq_lengths = {'clinc':30, 'stackoverflow':45, 'banking':55}
-        train_epochs = {'clinc':20, 'stackoverflow':10, 'banking':20}
-        args.max_seq_length = max_seq_lengths[args.dataset]
-        args.num_train_epochs = train_epochs[args.dataset]
-        args.pretrain_dir = 'premodel/model_' + args.dataset + '_' + str(args.seed)
-
         processor = DatasetProcessor()
         self.data_dir = os.path.join(args.data_dir, args.dataset)
-        self.all_label_list = processor.get_labels(self.data_dir)
+        all_label_path = os.path.join(self.data_dir, 'label', 'label.list')
+        self.all_label_list = pd.read_csv(all_label_path, header=None)[0].tolist()
+
         self.num_known = round(len(self.all_label_list) * args.known_cls_ratio)
-        self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.num_known, replace=False))
-        self.known_lab = [int(np.where(self.all_label_list== a)[0]) for a in self.known_label_list]
+        self.known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.known_cls_ratio}.list', header=None)[0].tolist()
+        
+        self.known_lab = [self.all_label_list.index(a) for a in self.known_label_list]
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
         self.train_labeled_examples, self.train_unlabeled_examples = self.get_examples(processor, args, 'train')
         print('num_labeled_samples', len(self.train_labeled_examples))
@@ -46,34 +44,56 @@ class Data:
         random.seed(seed)
         torch.backends.cudnn.deterministic = True
     
-    def get_examples(self, processor, args, mode = 'train'):
-        ori_examples = processor.get_examples(self.data_dir, mode)
+    def get_examples(self, processor, args, mode='train'):
+    # --- 对于训练集，执行严谨的双重过滤 ---
         if mode == 'train':
-            train_labels = np.array([example.label for example in ori_examples])
-            train_labeled_ids = []
-            for label in self.known_label_list:
-                num = round(len(train_labels[train_labels == label]) * args.labeled_ratio)
-                pos = list(np.where(train_labels == label)[0])                
-                train_labeled_ids.extend(random.sample(pos, num))
+            # 1. 定义并读取两个核心文件
+            origin_data_path = os.path.join(self.data_dir, 'origin_data', 'train.tsv')
+            labeled_info_path = os.path.join(self.data_dir, 'labeled_data', str(args.labeled_ratio), 'train.tsv')
 
-            train_labeled_examples, train_unlabeled_examples = [], []
-            for idx, example in enumerate(ori_examples):
-                if idx in train_labeled_ids:
-                    train_labeled_examples.append(example)
-                else:
-                    train_unlabeled_examples.append(example)
+            origin_data = pd.read_csv(origin_data_path, sep='\t')
+            labeled_info = pd.read_csv(labeled_info_path, sep='\t')
+            
+            # 2. 合并信息：将原始文本添加到标签信息中
+            # 假设两个文件行数和顺序完全对应
+            merged_data = labeled_info
+            merged_data['text'] = origin_data['text']
+            
+            # 3. 创建双重过滤的布尔掩码 (boolean mask)
+            # 条件：标签必须在已知类别列表里 & labeled 字段必须为 True
+            is_labeled_known = (merged_data['label'].isin(self.known_label_list)) & (merged_data['labeled'])
+            
+            # 4. 根据掩码分割为“有标签”和“无标签”两个 DataFrame
+            labeled_df = merged_data[is_labeled_known]
+            unlabeled_df = merged_data[~is_labeled_known] # ~is_labeled_known 表示取反
 
+            # 5. 将两个 DataFrame 分别转换为 InputExample 对象列表
+            train_labeled_examples = []
+            for i, row in labeled_df.iterrows():
+                guid = f"train_labeled-{i}"
+                train_labeled_examples.append(InputExample(guid=guid, text=row['text'], label=row['label']))
+            
+            train_unlabeled_examples = []
+            for i, row in unlabeled_df.iterrows():
+                guid = f"train_unlabeled-{i}"
+                train_unlabeled_examples.append(InputExample(guid=guid, text=row['text'], label=row['label']))
+                
             return train_labeled_examples, train_unlabeled_examples
 
-        elif mode == 'eval':
-            eval_examples = []
-            for example in ori_examples:
-                if example.label in self.known_label_list:
-                    eval_examples.append(example)
-            return eval_examples
+        else: # mode is 'eval' or 'test'
+            ori_examples = processor.get_examples(self.data_dir, mode)
+            
+            if mode == 'eval':
+                # 验证集：只包含已知类别的样本
+                eval_examples = []
+                for example in ori_examples:
+                    if example.label in self.known_label_list:
+                        eval_examples.append(example)
+                return eval_examples
 
-        elif mode == 'test':
-            return ori_examples
+            elif mode == 'test':
+                # 测试集：包含所有样本
+                return ori_examples
 
     def get_semi(self, labeled_examples, unlabeled_examples, args):
         tokenizer = AutoTokenizer.from_pretrained(args.bert_model, do_lower_case=True)    
@@ -173,14 +193,15 @@ class DatasetProcessor():
     
     def get_examples(self, data_dir, mode):
         if mode == 'train':
-            return self._create_examples(
-                self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+            file_path = os.path.join(data_dir, "origin_data", "train.tsv")
         elif mode == 'eval':
-            return self._create_examples(
-                self._read_tsv(os.path.join(data_dir, "dev.tsv")), "train")
+            file_path = os.path.join(data_dir, "origin_data", "dev.tsv")
         elif mode == 'test':
-            return self._create_examples(
-                self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+            file_path = os.path.join(data_dir, "origin_data", "test.tsv")
+        else:
+            raise ValueError("Invalid mode %s" % mode)
+
+        return self._create_examples(self._read_tsv(file_path), mode)
 
     def get_labels(self, data_dir):
         """See base class."""

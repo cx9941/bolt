@@ -2,7 +2,11 @@ import argparse
 
 def init_model():
     parser = argparse.ArgumentParser()
-    
+
+    parser.add_argument("--output_dir", type=str, default='./outputs/openset/clap', help="The unified output directory for all experiment artifacts.")
+    parser.add_argument("--fold_idx", default=0, type=int, help="The index of the fold for cross-validation.")
+    parser.add_argument("--fold_num", default=5, type=int, help="The total number of folds for cross-validation.")
+
     parser.add_argument("--data_dir", default='../data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
     
@@ -27,13 +31,13 @@ def init_model():
 
     parser.add_argument("--save_results", action="store_true", help="save test results")
 
-    parser.add_argument("--dataset", default=None, type=str, required=True,
+    parser.add_argument("--dataset", default="banking", type=str,
                         help="The name of the dataset to train selected")
     
-    parser.add_argument("--known_cls_ratio", default=0.75, type=float, required=True, help="The number of known classes")
+    parser.add_argument("--known_cls_ratio", default=0.75, type=float, help="The number of known classes")
     
-    parser.add_argument("--labeled_ratio", default=1.0, type=float, required=True, help="The ratio of labeled samples in the training set")
-    
+    parser.add_argument("--labeled_ratio", default=1.0, type=float, help="The ratio of labeled samples in the training set")
+
     parser.add_argument("--method", type=str, default=None, help="which method to use")
     
     parser.add_argument('--seed', type=int, default=0, help="random seed for initialization")

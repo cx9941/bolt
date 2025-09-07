@@ -9,6 +9,16 @@ def init_model():
     parser.add_argument("--api_key", type=str, default=None,
                         help="The key for Openai API.")
     
+    parser.add_argument("--api_base", type=str, default=None, 
+                        help="The base URL for the API.")
+    
+    parser.add_argument("--max_seq_length", default=None, type=int,
+                        help="The maximum total input sequence length. Set via dataset_specific_configs in YAML.")
+    
+    parser.add_argument("--task", default=None, type=str,
+                        help="The task name for the dataset. Set via dataset_specific_configs in YAML.")
+    
+    
     parser.add_argument("--save_results_path", type=str, default='outputs',
                         help="The path to save results.")
 
@@ -64,6 +74,9 @@ def init_model():
 
     parser.add_argument("--num_train_epochs", default=50, type=int,
                         help="The training epochs.")
+    
+    parser.add_argument("--evaluation_epoch", type=int, default=0, 
+                        help="The epoch at which evaluation is performed.")
 
     parser.add_argument("--lr_pre", default=5e-5, type=float,
                         help="The learning rate for pre-training.")
@@ -165,5 +178,10 @@ def init_model():
     # Ablation
     parser.add_argument("--prompt_ablation", default="full", type=str, help="Choose from full|wo_demo|wo_name|wo_description")
     parser.add_argument("--component_ablation", default="full", type=str, help="Choose from full|wo_ce|wo_cl_1|wo_cl_all|wo_instance_feedback|wo_cluster_feedback|wo_both_feedback")
+
+    parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
+    parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
+    parser.add_argument("--pretrain_dir", default='outputs/pretrain', type=str, 
+                        help="The output directory for pre-trained models.")
 
     return parser

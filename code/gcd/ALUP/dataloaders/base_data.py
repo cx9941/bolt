@@ -19,57 +19,27 @@ class BaseDataNew(object):
         self.data_dir = os.path.join(args.data_dir, args.dataset)
         self.logger_name = args.logger_name
         args.max_seq_length = max_seq_lengths[args.dataset]
-        
-        # process labels
-        self.all_label_list = self.get_labels(self.data_dir)
-        # self.all_label_list = [str(item) for item in self.all_label_list]
+       
+        all_label_path = os.path.join(self.data_dir, 'label', 'label.list')
+        self.all_label_list = pd.read_csv(all_label_path, header=None)[0].tolist()
 
         # calculate the number of known classes
         self.num_labels = int(len(self.all_label_list) * args.cluster_num_factor)
         self.n_known_cls = round(len(self.all_label_list) * args.known_cls_ratio)
 
         # conduct the split of known and unknown classes
-        # self.known_label_list = list(np.random.choice(np.array(self.all_label_list), self.n_known_cls, replace=False))
-        # self.unknown_label_list = self.difference(self.all_label_list, self.known_label_list)
-        self.known_label_list = pd.read_csv(f"{self.data_dir}/label/label_{args.known_cls_ratio}.list", header=None)[0].tolist()
+        # self.known_label_list = pd.read_csv(f"{self.data_dir}/label/label_{args.known_cls_ratio}.list", header=None)[0].tolist()
+        self.known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.known_cls_ratio}.list', header=None)[0].tolist()
 
-        self.known_train_sample = pd.read_csv(f"{self.data_dir}/labeled_data/train_{args.labeled_ratio}.tsv", sep='\t')
-        self.known_train_sample = self.known_train_sample[self.known_train_sample['label'].isin(self.known_label_list)]
 
-        self.known_eval_sample = pd.read_csv(f"{self.data_dir}/labeled_data/dev_{args.labeled_ratio}.tsv", sep='\t')
-        self.known_eval_sample = self.known_eval_sample[self.known_eval_sample['label'].isin(self.known_label_list)]
+        # self.known_train_sample = pd.read_csv(f"{self.data_dir}/labeled_data/train_{args.labeled_ratio}.tsv", sep='\t')
+        # self.known_train_sample = self.known_train_sample[self.known_train_sample['label'].isin(self.known_label_list)]
 
-        # ======================= DEBUGGING CODE START =======================
-        print("\n" + "="*30)
-        print("           DEBUGGING DATA LISTS")
-        print("="*30)
+        # self.known_eval_sample = pd.read_csv(f"{self.data_dir}/labeled_data/dev_{args.labeled_ratio}.tsv", sep='\t')
+        # self.known_eval_sample = self.known_eval_sample[self.known_eval_sample['label'].isin(self.known_label_list)]
 
-        print("\n[DEBUG] all_label_list (from train.tsv):")
-        print(f"Type: {type(self.all_label_list)}, Length: {len(self.all_label_list)}")
-        print(self.all_label_list)
-
-        print("\n[DEBUG] known_label_list (from .list file):")
-        print(f"Type: {type(self.known_label_list)}, Length: {len(self.known_label_list)}")
-        print(self.known_label_list)
-        
-        print("\n[DEBUG] Checking for mismatches...")
-        mismatch_found = False
-        # 我们来手动检查是哪个标签出了问题
-        for a_known_label in self.known_label_list:
-            # 直接用 Python 的 in 关键字检查，这比 np.where 更直观
-            if a_known_label not in self.all_label_list:
-                print(f"--> FATAL MISMATCH: The label '{a_known_label}' from known_label_list is NOT FOUND in all_label_list!")
-                mismatch_found = True
-        
-        if not mismatch_found:
-            print("--> OK: All known labels were found in all_label_list.")
-        
-        print("="*30)
-        print("         END DEBUGGING DATA LISTS")
-        print("="*30 + "\n")
-        # ======================== DEBUGGING CODE END ========================
-
-        self.known_lab = [int(np.where(self.all_label_list== a)[0]) for a in self.known_label_list]
+        # self.known_lab = [int(np.where(self.all_label_list== a)[0]) for a in self.known_label_list]
+        self.known_lab = [self.all_label_list.index(a) for a in self.known_label_list]
 
         # create examples
         self.train_labeled_examples, self.train_unlabeled_examples = self.get_examples(args, mode='train', separate=True)
@@ -80,78 +50,90 @@ class BaseDataNew(object):
 
     def get_examples(self, args, mode, separate=False):
         """
-        args:
-            mode: train, eval, test
-            separate: whether to separate known and unknown classes
+        采用Glean的双重过滤逻辑来划分训练集。
+        eval和test模式保持ALUP原有的简单过滤逻辑。
         """
-        # 1. 保留 ALUP 的数据读取方式
-        examples = self.read_data(self.data_dir, mode)
-
-        # 2. 注入 LOOP 的训练集划分逻辑
+        # --- 对于训练集，执行Glean的双重过滤 ---
         if mode == 'train':
-            # 使用在 __init__ 中加载的 self.known_train_sample
-            known_samples_set = set(zip(self.known_train_sample['text'].str.lower(), self.known_train_sample['label'].str.lower()))
+            # 1. 定义并读取两个核心文件
+            origin_data_path = os.path.join(self.data_dir, 'origin_data', 'train.tsv')
+            labeled_info_path = os.path.join(self.data_dir, 'labeled_data', str(args.labeled_ratio), 'train.tsv')
 
+            # 使用pandas读取
+            origin_data = pd.read_csv(origin_data_path, sep='\t')
+            labeled_info = pd.read_csv(labeled_info_path, sep='\t')
+            
+            # 2. 合并信息：将原始文本添加到标签信息中
+            # 假设两个文件的行数和顺序完全对应
+            merged_data = labeled_info
+            merged_data['text'] = origin_data['text']
+            
+            # 3. 创建双重过滤的布尔掩码 (boolean mask)
+            # 条件：标签必须在已知类别列表里 & labeled 字段必须为 True
+            is_labeled_known = (merged_data['label'].isin(self.known_label_list)) & (merged_data['labeled'])
+            
+            # 4. 根据掩码分割为“有标签”和“无标签”两个 DataFrame
+            labeled_df = merged_data[is_labeled_known]
+            unlabeled_df = merged_data[~is_labeled_known]
+
+            # 5. 将两个 DataFrame 分别转换为 InputExample 对象列表 (保持ALUP的输出格式)
             train_labeled_examples = []
+            for i, row in labeled_df.iterrows():
+                guid = f"train_labeled-{i}"
+                train_labeled_examples.append(InputExample(guid=guid, text_a=row['text'], label=row['label']))
+            
             train_unlabeled_examples = []
-            for example in examples:
-                if (example.text_a, example.label) in known_samples_set:
-                    train_labeled_examples.append(example)
-                else:
-                    train_unlabeled_examples.append(example)
+            for i, row in unlabeled_df.iterrows():
+                guid = f"train_unlabeled-{i}"
+                train_unlabeled_examples.append(InputExample(guid=guid, text_a=row['text'], label=row['label']))
+                
             return train_labeled_examples, train_unlabeled_examples
 
-        elif mode == 'eval':
-            eval_examples = []
-            for example in examples:
-                if example.label in self.known_label_list:
-                    eval_examples.append(example)
-            return eval_examples
+        # --- 对于验证集和测试集，使用ALUP原有的、正确的加载逻辑 ---
+        else: # mode is 'eval' or 'test'
+            examples = self.read_data(self.data_dir, mode)
+            if mode == 'eval':
+                # 验证集：只包含已知类别的样本
+                eval_examples = [ex for ex in examples if ex.label in self.known_label_list]
+                return eval_examples
 
-        elif mode == 'test':
-            if not separate:
-                return examples
-            else:
-                test_known_examples = []
-                test_unknown_examples = []
-                for example in examples:
-                    if example.label in self.known_label_list:
-                        test_known_examples.append(example)
-                    else:
-                        test_unknown_examples.append(example)
-                return test_known_examples, test_unknown_examples
-
-        else:
-            raise ValueError('mode must be train, eval or test')
+            elif mode == 'test':
+                if not separate:
+                    return examples
+                else:
+                    # 分别返回已知和未知意图的测试样本
+                    test_known_examples = [ex for ex in examples if ex.label in self.known_label_list]
+                    test_unknown_examples = [ex for ex in examples if ex.label not in self.known_label_list]
+                    return test_known_examples, test_unknown_examples
 
 
     def read_data(self, data_dir, mode):
         """
-            read data from data_dir
+        read data from data_dir, with paths pointing to the 'origin_data' subdirectory.
         """
         if mode == 'train':
-            lines = self.read_tsv(os.path.join(data_dir, "train.tsv"))
-            examples = self.create_examples(lines, "train")
-            return examples
+            # 注意：新的get_examples train模式不再调用此分支，但为保持一致性我们仍修正它
+            file_path = os.path.join(data_dir, "origin_data", "train.tsv")
         elif mode == 'eval':
-            lines = self.read_tsv(os.path.join(data_dir, "dev.tsv"))
-            examples = self.create_examples(lines, "train")
-            return examples
+            # 修正eval模式的路径
+            file_path = os.path.join(data_dir, "origin_data", "dev.tsv")
         elif mode == 'test':
-            lines = self.read_tsv(os.path.join(data_dir, "test.tsv"))
-            examples = self.create_examples(lines, "test")
-            return examples
+            # 修正test模式的路径
+            file_path = os.path.join(data_dir, "origin_data", "test.tsv")
         else:
             raise NotImplementedError(f"Mode {mode} not found")
+        
+        lines = self.read_tsv(file_path)
+        examples = self.create_examples(lines, mode)
+        return examples
         
 
     def read_tsv(cls, input_file, quotechar=None):
         """Reads a tab separated value file."""
-        with open(input_file, "r", encoding="UTF-8") as f:
+        with open(input_file, "r") as f:
             reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
             lines = []
             for line in reader:
-                line = [l.lower() for l in line]
                 lines.append(line)
             return lines
         

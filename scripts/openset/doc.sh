@@ -4,35 +4,29 @@
 set -o errexit
 
 # --- 脚本基础设置 ---
-GPU_ID="2"
-
-# 设置基础配置文件路径
+GPU_ID="0"
 CONFIG_FILE="configs/openset/doc.yaml"
 
-
+# --- 批量实验循环 ---
 for seed in 0
 do
-    # 循环遍历所有需要测试的数据集
     for dataset in banking
     do
-        # 循环遍历不同的已知类比例
         for ratio in 0.25
         do
             echo "===================================================="
             echo "Running DOC -> Dataset: ${dataset}, Seed: ${seed}, Known Ratio: ${ratio}"
             echo "===================================================="
 
-            # 核心步骤：使用您项目的正确格式调用 parse_yaml.py
-            # 直接将需要覆盖的参数以 --key value 的形式传入
-            params=$(python tools/parse_yaml.py \
+            # --- 改造核心 ---
+            # 废弃 parse_yaml.py，直接调用主程序并传入高优先级参数
+            python code/openset/baselines/DOC/DOC.py \
                 --config ${CONFIG_FILE} \
                 --dataset ${dataset} \
                 --seed ${seed} \
                 --known_cls_ratio ${ratio} \
-                --gpu_id ${GPU_ID})
-
-            # 执行模型的主Python脚本，传入生成的参数
-            python code/openset/baselines/DOC/DOC.py ${params}
+                --gpu_id ${GPU_ID} \
+                --output_dir ./outputs/openset/doc/${dataset}_${ratio}_${seed} # 动态生成输出目录
 
             echo "Finished run for Dataset: ${dataset}, Seed: ${seed}, Known Ratio: ${ratio}"
         done

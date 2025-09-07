@@ -10,6 +10,9 @@ from pretrain import *
 from util import *
 from loss import *
 from sklearn.metrics import classification_report
+import yaml
+import sys
+
 
 def set_seed_all(seed):
     random.seed(seed)
@@ -408,51 +411,66 @@ def reload_adbes_model(args):
     return model, tokenizer
 
 
-def create_model_dir(args, mode):
-    model_name = 'KCCL'
-    if mode == 'pretrain':
-        model_path = os.path.join(
-            args.pretrain_dir, args.dataset, args.dataset_mode + '_' + model_name + '_' + str(args.known_cls_ratio), str(args.save_version))
-    elif 'train' in mode:
-        model_path = os.path.join(
-            args.save_results_dir, args.dataset, args.dataset_mode + '_' + model_name + '_' + str(args.known_cls_ratio), str(args.save_version))
-    else:
-        raise Exception('the mode of create_model_dir is not required.')
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
+def create_model_dir(args): # 重构这个函数，使其更清晰
+    model_path = os.path.join(args.output_dir, 'finetuned_model')
+    os.makedirs(model_path, exist_ok=True)
     return model_path
-
 
 if __name__ == '__main__':
     start_time = datetime.now()
-
     print(datetime.now(), ' Data and Parameters Initialization...')
-    # ===================== 修改开始 =====================
-    # 1. 直接调用 init_model() 来获取一个已经配置好所有参数的 parser
-    parser = init_model()
     
-    # 2. 解析参数，这一步和原来一样
+    # 1. 参数解析
+    parser = init_model() # init_model 来自同目录的 init_parameter.py
+    # 新增 config 和 output_dir
+    parser.add_argument('--config', type=str, default=None, help="Path to the YAML config file.")
+    # parser.add_argument("--output_dir", type=str, default='./outputs/openset/clap', help="Standardized output directory.")
     args = parser.parse_args()
-    # ===================== 修改结束 =====================
 
-    # 2. 设置标准化的输出路径
-    args.pretrain_model_path = os.path.join(args.output_dir, 'finetuned_model')
-    os.makedirs(args.pretrain_model_path, exist_ok=True)
+    # 2. 配置注入
+    def apply_config_updates(args, config_dict, parser):
+        # ... (此处省略我们标准的 apply_config_updates 函数，请从之前的文件复制过来)
+        # 注意：需要处理 bool 和自定义类型，如 str_to_bool
+        type_map = {action.dest: action.type for action in parser._actions}
+        for key, value in config_dict.items():
+            if f'--{key}' in sys.argv or not hasattr(args, key): continue
+            expected_type = type_map.get(key)
+            if expected_type and value is not None:
+                try:
+                    if expected_type is bool or (hasattr(expected_type, '__name__') and expected_type.__name__ == 'str_to_bool'):
+                        value = str(value).lower() in ('true', '1', 't', 'yes')
+                    else: value = expected_type(value)
+                except (ValueError, TypeError): print(f"Warning: Could not cast YAML value '{value}' for key '{key}' to type {expected_type}.")
+            setattr(args, key, value)
 
-    # 3. 设置日志
-    sys.stdout = Logger('train.log', path=args.pretrain_model_path)
-    print('start_time:{}'.format(start_time))
-    print('args: ', args)
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        # 先应用通用配置
+        apply_config_updates(args, yaml_config, parser)
+        # 再应用 finetune 专属配置
+        if 'finetune' in yaml_config:
+            apply_config_updates(args, yaml_config['finetune'], parser)
+        # (可选) 应用数据集专属配置
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            if 'finetune' in dataset_configs:
+                apply_config_updates(args, dataset_configs['finetune'], parser)
 
-    # 4. 加载数据
+    # 3. 路径管理
+    # 使用 output_dir 生成所有子路径
+    args.pretrain_model_path = create_model_dir(args)
+    
+    # 4. 日志和环境设置
+    sys.stdout = Logger('train_finetune.log', path=args.pretrain_model_path)
+    print('start_time:{}'.format(start_time)); print('args: ', args)
+    set_seed_all(args.seed)
+
+    # 5. 加载数据
     data = Data(args)
     print(datetime.now(), ' Data and Parameters finished loading!')
 
-    # 5. 设置随机种子
-    set_seed_all(args.seed)
-
-    # 6. 检查模型是否存在，如果不存在，则进行训练
-    #    PretrainModelManager 来自 pretrain.py，它负责训练并保存最好的模型
+    # 6. 训练
     if not os.path.exists(os.path.join(args.pretrain_model_path, 'pytorch_model.bin')):
         print(datetime.now(), ' Pre-training begin...')
         manager_p = PretrainModelManager(args, data)
@@ -461,5 +479,4 @@ if __name__ == '__main__':
     else:
         print(f"Model already exists in {args.pretrain_model_path}, skipping training.")
     
-    # 第一阶段的任务到此结束
     print(f"\n---> STAGE 1 Finetuning COMPLETED. Model saved to {args.pretrain_model_path}")

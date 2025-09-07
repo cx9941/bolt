@@ -16,7 +16,10 @@ from utils import get_best_checkpoint, create_model
 # --- 改动 1: 导入新的数据加载函数 ---
 from load_dataset import load_and_prepare_datasets
 from reg_trainer import RegTrainer
-from configs import get_plm_ood_config
+# from configs import get_plm_ood_config
+from configs import create_parser, finalize_config
+import yaml
+import sys
 
 def run_pretraining(args):
     """
@@ -102,6 +105,45 @@ def run_pretraining(args):
     results = trainer.evaluate()
     logging.info(f"Final results: {results}")
 
+def apply_config_updates(args, config_dict, parser):
+    """
+    使用配置字典中的值更新 args 对象，同时进行类型转换。
+    命令行中显式给出的参数不会被覆盖。
+    """
+    # 创建一个从 dest 到 action.type 的映射
+    type_map = {action.dest: action.type for action in parser._actions}
+
+    for key, value in config_dict.items():
+        # 检查参数是否在命令行中被用户显式提供
+        if f'--{key}' not in sys.argv and hasattr(args, key):
+            # 获取该参数预期的类型
+            expected_type = type_map.get(key)
+            # 如果有预期类型且值不为None，则进行类型转换
+            if expected_type and value is not None:
+                value = expected_type(value)
+            setattr(args, key, value)
+
 if __name__ == '__main__':
-    config_args = get_plm_ood_config()
-    run_pretraining(config_args)
+    # 1. 从 configs.py 获取基础的解析器
+    parser = create_parser()
+    
+    # 2. 【核心】只在这里添加 --config 参数
+    parser.add_argument("--config", type=str, help="Path to the YAML config file")
+    
+    # 3. 解析参数 (命令行参数优先)
+    args = parser.parse_args()
+    
+    # 4. 加载 YAML 文件并智能覆盖
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        apply_config_updates(args, yaml_config, parser)
+        
+    # 5. 调用 finalize_config 完成路径和日志的设置
+    config_args = finalize_config(args)
+    
+    # 6. 使用最终的 config_args 运行主程序
+    # 在 pretrain.py 中:
+    run_pretraining(config_args) 
+    # 在 train_ood.py 中:
+    # run_ood_evaluation(config_args)

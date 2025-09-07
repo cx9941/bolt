@@ -155,18 +155,17 @@ class view_generator:
         return view_pos
 
 def save_model(args, model, epoch):
-    model_path = os.path.join(args.output_dir, 'models_{}'.format(args.known_cls_ratio))
+    model_path = args.output_dir
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     model_file = os.path.join(model_path, args.model_file_name + f'_epoch_{epoch}.pt')
-
     model_dict = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
     }
-
-
+    
     torch.save(model_dict, model_file)
+    print(f"Model saved to {model_file}")
 
 def save_results(args, test_results):
 

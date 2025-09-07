@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 export OMP_NUM_THREADS=16
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 export OPENAI_API_KEY=6c5c96209c4ef126a87fbe9840fab7c346b4c6fb6a57529fce7dea01c683fd1b
 
 # --- 配置测试参数 ---
@@ -15,7 +15,7 @@ echo "--- Running Fast Test for LOOP (Full Pipeline) ---"
 
 # 2. 传入所有必要的参数，并将epoch设为1
 python loop.py \
-    --data_dir ../../data \
+    --data_dir ../../../data \
     --dataset $dataset \
     --known_cls_ratio 0.75 \
     --labeled_ratio 0.1 \

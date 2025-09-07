@@ -27,8 +27,8 @@ def init_model():
                         help="The ratio of labeled samples in the training set")
 
     # pretrain model
-    parser.add_argument("--pretrain_dir", default='pretrain_models', type=str,
-                        help="The dir for the pre-trained and fine-tuned bert models.")
+    # parser.add_argument("--pretrain_dir", default='pretrain_models', type=str,
+    #                     help="The dir for the pre-trained and fine-tuned bert models.")
 
     parser.add_argument("--pretrain_model_path", default=None, type=str,
                         help="The path for the pre-trained and fine-tuned models.")
@@ -95,7 +95,7 @@ def init_model():
 
 
     # train model
-    parser.add_argument("--save_results_dir", type=str, default='outputs', help="the dir to save results")
+    # parser.add_argument("--save_results_dir", type=str, default='outputs', help="the dir to save results")
     
     parser.add_argument("--adbes_model_path", default=None, type=str,
                         help="The adbes model path where the final models predictions and checkpoints will be written.")

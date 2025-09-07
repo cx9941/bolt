@@ -12,13 +12,16 @@ def str_to_bool(value):
 
 def init_model():
     parser = argparse.ArgumentParser()
-    
+
+    parser.add_argument('--config', type=str, default=None, help="Path to the YAML config file.")
+    parser.add_argument("--output_dir", type=str, default='./outputs/openset/adb', help="The unified output directory for all experiment artifacts.")
+
     # --- 修正默认路径 ---
     parser.add_argument("--data_dir", default='./data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
-    parser.add_argument("--save_results_path", type=str, default='./outputs/adb/results', help="the path to save results")
-    parser.add_argument("--pretrain_dir", default='./outputs/adb/models', type=str, 
-                        help="The output directory where the model predictions and checkpoints will be written.") 
+    # parser.add_argument("--save_results_path", type=str, default='./outputs/adb/results', help="the path to save results")
+    # parser.add_argument("--pretrain_dir", default='./outputs/adb/models', type=str, 
+    #                     help="The output directory where the model predictions and checkpoints will be written.") 
     parser.add_argument("--bert_model", default="./pretrained_models/bert-base-uncased", type=str, help="The path for the pre-trained bert model.")
     
     # --- 其他参数 (保持不变) ---

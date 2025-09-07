@@ -25,9 +25,28 @@ from models import (
 )
 from my_hf_argparser import HfArgumentParser
 import train_step_freelb, train_step_plain
+import yaml
 
 logger = logging.getLogger(__name__)
 torch.set_num_threads(6)
+
+# --- 新增：定义一个辅助函数来处理配置更新 ---
+def apply_yaml_to_dataclasses(yaml_config, dataclass_tuple, cli_args):
+    """
+    将 YAML 配置应用到 dataclass 对象上，但跳过命令行中已明确指定的参数。
+    """
+    arg_list = [arg.lstrip('-') for arg in cli_args if arg.startswith('--')]
+    
+    for key, value in yaml_config.items():
+        if key in arg_list:
+            # 如果参数在命令行中指定，则跳过，保留命令行优先级
+            continue
+        
+        # 遍历所有 dataclass 对象，找到持有该属性的对象并更新
+        for dc_obj in dataclass_tuple:
+            if hasattr(dc_obj, key):
+                setattr(dc_obj, key, value)
+                break # 找到后即跳出内层循环
 
 
 def main():
@@ -51,6 +70,22 @@ def main():
     # training_args.do_train = False
     # other_args.scale = 1.5
     # other_args.scale_ood = 1.3
+
+    all_args_tuple = (other_args, data_args, training_args, fitlog_args)
+    if other_args.config:
+        with open(other_args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        
+        # 3. 应用通用配置 (最低优先级)
+        # 我们传入 sys.argv 来判断哪些参数是命令行指定的
+        apply_yaml_to_dataclasses(yaml_config, all_args_tuple, sys.argv)
+        
+        # 4. (推荐) 应用数据集专属配置 (第二优先级)
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_name = data_args.dataset  # 获取当前数据集名称
+            if dataset_name in yaml_config['dataset_specific_configs']:
+                dataset_specific_config = yaml_config['dataset_specific_configs'][dataset_name]
+                apply_yaml_to_dataclasses(dataset_specific_config, all_args_tuple, sys.argv)
 
     # 校验防呆
     assert other_args.loss_type in ["original", "increase", "ce_and_div_drop-last-layer", "ce_and_div"]

@@ -1,0 +1,59 @@
+# SDC 方法的最终配置模板
+# ----------------------------------
+
+# --- 任务设置 ---
+dataset: "banking"
+known_cls_ratio: 0.25
+labeled_ratio: 0.1
+seed: 0
+
+# --- 路径与环境设置 ---
+gpu_id: "0"
+data_dir: "./data" # 统一使用相对路径
+save_results_path: "./outputs/gcd/sdc"
+bert_model: "./pretrained_models/bert-base-uncased"
+tokenizer: "./pretrained_models/bert-base-uncased"
+
+# --- 交叉验证 ---
+# fold_num: 5
+fold_idx: 0
+
+# --- 训练超参数 ---
+train_batch_size: 32
+pretrain_batch_size: 32
+eval_batch_size: 32
+num_train_epochs: 80
+num_pretrain_epochs: 100
+lr: !!float 5e-5
+lr_pre: !!float 5e-5
+warmup_proportion: 0.1
+pre_wait_patient: 20
+
+# --- 模型与算法超参数 ---
+cluster_num_factor: 1.0
+feat_dim: 768
+rtr_prob: 0.25
+num_iters_sk: 3
+epsilon_sk: !!float 0.05
+imb-factor: 1.0
+
+# --- 数据集专属配置 ---
+dataset_specific_configs:
+  hwu:
+    max_seq_length: 20
+    beta: 0.05
+  clinc:
+    max_seq_length: 30
+    beta: 0.42
+  banking:
+    max_seq_length: 65
+    beta: 0.03
+  stackoverflow:
+    max_seq_length: 65
+    beta: 0.05
+  mcid:
+    max_seq_length: 65
+    beta: 0.05
+  ecdt:
+    max_seq_length: 65
+    beta: 0.05

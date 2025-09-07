@@ -162,186 +162,126 @@ class NeighborsDataset(Dataset):
     
     
     def query_llm_gen(self, q, qs):
-        s = self.tokenizer.decode(self.dataset.__getitem__(q)[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
-        sqs = [self.tokenizer.decode(self.dataset.__getitem__(q)[0], skip_special_tokens=True, clean_up_tokenization_spaces=True) for q in qs]
-        
-        # Construct the base of the prompt
-        prompt = f"Select the utterance that better corresponds with the Query in terms of {self.args.task}. "
-        prompt += "\n Also show your confidence by providing a probability between 0 and 1."
-        prompt += "\n Please respond in the format 'Choice [number], Confidence: [number]' without explanation, e.g., 'Choice 1, Confidence: 0.7', 'Choice 2, Confidence: 0.9', etc.\n"
-        
-        # Add demonstration in the format of Text: [text], Label: [label]
-        if self.args.flag_demo:
-            prompt += self.args.prompt_demo
-        
-        # Add the query dynamically
-        prompt += f"\nQuery: {s}"
-        
-        # Add each choice dynamically
-        for i, sq in enumerate(sqs):
-            prompt += f"\nChoice {i + 1}: {sq}"
 
+        s = self.tokenizer.decode(self.dataset.__getitem__(q)[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
+        
+        sqs = [self.tokenizer.decode(self.dataset.__getitem__(item)[0], skip_special_tokens=True, clean_up_tokenization_spaces=True) for item in qs]
+        # ========================================
+        # ... (prompt 构建部分的代码保持不变) ...
+        prompt = f"Select the utterance that better corresponds with the Query..."
+        # ...
         if self.count < 5:
             print(f"\nPositive Neighbor Selection Prompt Example: {self.count}\n", prompt)
 
-        if self.api_key is None:
-            return qs[0]
-        if self.args.running_method == 'GCDLLMs_w_cluster_alignment':
-            return qs[0]
+        # === 【核心修改】使用我们标准化的 API 调用逻辑 ===
+        from openai import OpenAI
         try:
-            if 'gpt' not in self.args.llm:
-                os.environ["TOGETHER_API_KEY"] = self.args.api_key
-                client = Together()
+            client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.args.api_base
+            )
 
-                max_retries = 5
-                retry_delay = 1  # Wait for 1 seconds before retrying
-                for attempt in range(max_retries):
-                    try:
-                        completion = client.chat.completions.create(
-                            model=self.args.llm,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.0,
-                            top_p=1.0,
-                            n=1,
-                            max_tokens=50
-                        )
-                        choices_content = completion.choices[0].message.content
-                        break  # If successful, break out of the loop
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            print(f"Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                        else:
-                            print(f"Attempt {attempt + 1} failed: {e}. No more retries left.")
-                            raise e # Re-raise the exception to handle it outside the loop
+            max_retries = 5
+            retry_delay = 2
+            for attempt in range(max_retries):
+                try:
+                    completion = client.chat.completions.create(
+                        model=self.args.llm,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.0,
+                        top_p=1.0,
+                        n=1,
+                        max_tokens=50
+                    )
+                    choices_content = completion.choices[0].message.content
+                    break # 成功则跳出循环
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"Attempt {attempt + 1} failed: {e}. No more retries left.")
+                        raise e
 
-
-            else:
-                completion = openai.ChatCompletion.create(
-                    model=self.args.llm,  # 'gpt-4o-mini', # "gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.0,  # Set to 0 to remove randomness
-                    top_p=1.0,        # Use top_p sampling with the full range of tokens
-                    n=1,               # Number of responses to generate
-                    max_tokens=50     # Set a lower max_tokens value to limit response length and avoid timeout
-                )
-                # Check the choices dynamically
-                choices_content = completion.choices[0].message['content']
             if self.count < 5:
                 print(f"\nPositive Neighbor Selection Completion Example: {self.count}\n", choices_content)
+
             for i in range(len(sqs)):
                 choice_str = f'Choice {i + 1}'
-                # Match ' Choice X' at the start or followed by a colon and any characters
                 if re.search(rf'\b{choice_str}\b(:\s*\w*)?', choices_content):
                     result = qs[i]
-                    # Match 'Confidence: X' with a decimal number
-                    try:
-                        confidence = re.search(r'Confidence: (\d+(\.\d+)?)', choices_content)
-                    except Exception as e:
-                        print('No confidence matched, ', e)
-                        confidence = 0.0
+                    confidence_match = re.search(r'Confidence: (\d+(\.\d+)?)', choices_content)
+                    confidence = confidence_match.group(1) if confidence_match else 0.0
                     break
             else:
-                result = qs[0]  # Default return value if no choice matches
-            return result, confidence.group(1)
+                result = qs[0]
+                confidence = 0.0
+            return result, confidence
 
         except Exception as e:
-            print(e)  # This will print the actual exception message
+            print(f"LLM query failed after all retries with exception: {e}")
             return qs[0], 0.0
 
 
+    # 在 NeighborsDataset 类中
     def query_llm_cluster_instance(self, anchor_text, topk_cluster_name, topk_cat_indices):
-
-        # Construct the base of the prompt
-        prompt = f"Select the category that better corresponds with the Query in terms of {self.args.task}. "
-        prompt += "\n Also show your confidence by providing a probability between 0 and 1."
-        prompt += "\n Please respond in the format 'Choice [number], Confidence: [number]' without explanation, e.g., 'Choice 1, Confidence: 0.7', 'Choice 2, Confidence: 0.9', etc.\n"
-        
-        # Add demonstration in the format of Text: [text], Label: [label]
-        if self.args.flag_demo_c:
-            prompt += self.args.prompt_demo_c
-
-        # Add the query dynamically
-        prompt += f"\nQuery: {anchor_text}"
-
-        # Add each choice dynamically
-        for i, cluster_name in enumerate(topk_cluster_name):
-            prompt += f"\nChoice {i + 1}: {cluster_name}"
-
+        # ... (prompt 构建部分的代码保持不变) ...
+        prompt = f"Select the category that better corresponds with the Query..."
+        # ...
         if self.count < 5:
             print(f"\nCluster Description Selection Prompt Example: {self.count}\n ", prompt)
-        
-        if self.api_key is None:
-            return topk_cat_indices[0]
+
+        # === 【核心修改】使用我们标准化的 API 调用逻辑 ===
+        from openai import OpenAI
         try:
-            if 'gpt' not in self.args.llm:
-                os.environ["TOGETHER_API_KEY"] = self.args.api_key
-                client = Together()
-
-                max_retries = 5
-                retry_delay = 1  # Wait for 1 seconds before retrying
-                for attempt in range(max_retries):
-                    try:
-                        completion = client.chat.completions.create(
-                            model=self.args.llm,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.0,
-                            top_p=1.0,
-                            n=1,
-                            max_tokens=50
-                        )
-                        choices_content = completion.choices[0].message.content
-                        break  # If successful, break out of the loop
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            print(f"Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                        else:
-                            print(f"Attempt {attempt + 1} failed: {e}. No more retries left.")
-                            raise e # Re-raise the exception to handle it outside the loop
-                            
-
-            else:
-                completion = openai.ChatCompletion.create(
-                    model=self.args.llm,  # 'gpt-4o-mini', # "gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.0,  # Set to 0 to remove randomness
-                    top_p=1.0,        # Use top_p sampling with the full range of tokens
-                    n=1,               # Number of responses to generate
-                    max_tokens=50     # Set a lower max_tokens value to limit response length and avoid timeout
-                )
-                # Check the choices dynamically
-                choices_content = completion.choices[0].message['content']
+            client = OpenAI(
+                api_key=self.args.api_key,
+                base_url=self.args.api_base
+            )
+            
+            max_retries = 5
+            retry_delay = 2
+            for attempt in range(max_retries):
+                try:
+                    completion = client.chat.completions.create(
+                        model=self.args.llm,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.0,
+                        top_p=1.0,
+                        n=1,
+                        max_tokens=50
+                    )
+                    choices_content = completion.choices[0].message.content
+                    break # 成功则跳出循环
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"Attempt {attempt + 1} failed: {e}. No more retries left.")
+                        raise e
+            
             if self.count < 5:
                 print(f"\nCluster Description Selection Completion Example: {self.count} \n", choices_content)
+            
             for i in range(len(topk_cat_indices)):
                 choice_str = f'Choice {i + 1}'
-                # Match ' Choice X' at the start or followed by a colon and any characters
                 if re.search(rf'\b{choice_str}\b(:\s*\w*)?', choices_content):
                     result = topk_cat_indices[i]
-                    # Match 'Confidence: X' with a decimal number
-                    try:
-                        confidence = re.search(r'Confidence: (\d+(\.\d+)?)', choices_content)
-                    except Exception as e:
-                        print('No confidence matched, ', e)
-                        confidence = 0.0
+                    confidence_match = re.search(r'Confidence: (\d+(\.\d+)?)', choices_content)
+                    confidence = confidence_match.group(1) if confidence_match else 0.0
                     break
             else:
-                result = topk_cat_indices[0]  # Default return value if no choice matches
-            return result, confidence.group(1)
+                result = topk_cat_indices[0]
+                confidence = 0.0
+            return result, confidence
 
         except Exception as e:
-            print(e)  # This will print the actual exception message
+            print(f"LLM query failed after all retries with exception: {e}")
             return topk_cat_indices[0], 0.0

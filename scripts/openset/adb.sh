@@ -1,13 +1,11 @@
 #!/bin/bash
 set -o errexit
 
+# --- 基础配置 ---
 CONFIG_FILE="configs/openset/adb.yaml" 
 GPU_ID="0"
 
-export CUDA_VISIBLE_DEVICES=$GPU_ID
-
 # --- 循环控制区 ---
-# 在这里定义您要批量运行的所有变量
 for s in 0
 do
 for dataset in 'banking'
@@ -18,16 +16,17 @@ do
     echo "Running ADB with: dataset=$dataset, known_cls_ratio=$rate, seed=$s"
     echo "========================================================================"
 
-    # --- 执行区 ---
-    # 1. 调用Python工具，传入基础配置文件和本次循环的覆盖参数
-    ALL_ARGS=$(python tools/parse_yaml.py --config $CONFIG_FILE \
+    # --- 改造核心 ---
+    # 废弃 parse_yaml.py，直接调用主程序并传入高优先级参数
+    python code/openset/baselines/ADB/ADB.py \
+        --config $CONFIG_FILE \
         --dataset $dataset \
         --known_cls_ratio $rate \
-        --seed $s)
+        --seed $s \
+        --gpu_id $GPU_ID \
+        --output_dir ./outputs/openset/adb/${dataset}_${rate}_${s} # 动态生成统一的输出目录
+done
+done
+done
 
-    # 2. 执行 ADB 的主程序，并传入所有参数
-    python code/openset/baselines/ADB/ADB.py $ALL_ARGS --gpu_id $GPU_ID
-
-done
-done
-done
+echo "All ADB experiments have been completed."

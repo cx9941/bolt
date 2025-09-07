@@ -31,13 +31,14 @@ def init_model():
 
     parser.add_argument("--warmup_proportion", default=0.1, type=float)
 
-    parser.add_argument("--freeze_bert_parameters", default=True, action="store_true", help="Freeze the last parameters of BERT.")
-
-    parser.add_argument("--save_model", default=True, type=str, help="Save trained model.")
-
     parser.add_argument("--save_results", default=False, type=str, help="Save trained model.")
 
-    parser.add_argument("--pretrain", default=True)
+    parser.add_argument("--freeze_bert_parameters", action="store_true", help="Freeze the last parameters of BERT.")
+    parser.add_argument("--save_model", action="store_true", help="Save trained model.")
+    parser.add_argument("--pretrain", action="store_true", help="Enable the pre-training stage.")
+    parser.add_argument("--beta", default=None, type=float, 
+                        help="The beta value for logits adjustment, typically dataset-specific and loaded from YAML.")
+
 
     parser.add_argument('--seed', type=int, default=0, help="Random seed for initialization.")
 
@@ -78,6 +79,10 @@ def init_model():
     parser.add_argument("--epsilon_sk", default=0.05, type=float, help="epsilon for the Sinkhorn")
 
     parser.add_argument("--imb-factor", default=1, type=float, help="imbalance factor of the data, default 1")
+
+    parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
+    parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
+    
     
     
     return parser

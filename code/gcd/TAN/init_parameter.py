@@ -3,13 +3,13 @@ from argparse import ArgumentParser
 def init_model():
     parser = ArgumentParser()
     
-    parser.add_argument("--data_dir", default='../../data', type=str,
+    parser.add_argument("--data_dir", default='../../../data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
     
     parser.add_argument("--pretrain_dir", default='./premodel_stackoverflow_0', type=str, 
                         help="The output directory where the model predictions and checkpoints will be written.") 
     
-    parser.add_argument("--bert_model", default="../../pretrained_models/bert-base-uncased", type=str, help="The path for the pre-trained bert model.")
+    parser.add_argument("--bert_model", default="../../../pretrained_models/bert-base-uncased", type=str, help="The path for the pre-trained bert model.")
     
     parser.add_argument("--max_seq_length", default=None, type=int,
                         help="The maximum total input sequence length after tokenization. Sequences longer "
@@ -61,7 +61,7 @@ def init_model():
     parser.add_argument("--wait_patient", default=20, type=int,
                         help="Patient steps for Early Stop.") 
 
-    parser.add_argument("--num_pretrain_epochs", default=100, type=float,
+    parser.add_argument("--num_pretrain_epochs", default=10, type=float,
                         help="The pre-training epochs.")
 
     parser.add_argument("--num_train_epochs", default=10, type=float,
@@ -73,5 +73,13 @@ def init_model():
     parser.add_argument("--lr", default=1e-5, type=float,
                         help="The learning rate for training.")  
     
+    parser.add_argument("--fold_num", default=5, type=int, 
+                        help="The total number of folds for cross-validation.")
+    
+    parser.add_argument("--fold_idx", default=0, type=int, 
+                        help="The index of the current fold.")
+    
+    parser.add_argument("--output_dir", default='./outputs', type=str, 
+                    help="The output directory where results and models will be written.")
     
     return parser

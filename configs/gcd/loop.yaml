@@ -1,0 +1,59 @@
+# ===================================================================
+# BOLT Platform: LOOP 算法配置文件 (loop.yaml) - v2 (带数据集专属配置)
+# ===================================================================
+
+# --- 必需参数 ---
+dataset: "banking"
+known_cls_ratio: 0.25
+
+# --- 常用参数 ---
+seed: 42
+gpu_id: "0"
+data_dir: "data"
+save_results_path: "outputs/gcd/loop"
+save_model_path: "outputs/gcd/loop/model"
+pretrain_dir: "outputs/gcd/loop/premodels" 
+bert_model: "./pretrained_models/bert-base-uncased"
+tokenizer: "./pretrained_models/bert-base-uncased"
+labeled_ratio: 0.1
+fold_num: 5
+fold_idx: 0
+
+# --- 训练参数 ---
+train_batch_size: 64
+eval_batch_size: 128
+pretrain_batch_size: 64
+num_train_epochs: 5
+num_pretrain_epochs: 10
+lr: !!float 1e-5
+
+# --- 算法专属参数 ---
+# topk 从这里移到下面的专属配置中
+view_strategy: 'rtr'
+update_per_epoch: 5
+
+# --- LLM 参数 ---
+api_key: "YOUR_API_KEY"
+api_base: "https://uni-api.cstcloud.cn/v1"
+llm_model_name: "deepseek-v3:671b"
+
+# --- 数据集专属配置 ---
+dataset_specific_configs:
+  clinc:
+    max_seq_length: 30
+    topk: 50
+  stackoverflow:
+    max_seq_length: 45
+    topk: 500
+  banking:
+    max_seq_length: 55
+    topk: 50
+  hwu:
+    max_seq_length: 55
+    topk: 55
+  mcid:
+    max_seq_length: 55
+    topk: 55
+  ecdt:
+    max_seq_length: 55
+    topk: 55

@@ -13,6 +13,10 @@ from init_parameter import init_model
 from pretrain import PretrainModelManager
 from model import BertForOT, BertForModel
 import seaborn as sn
+import sys
+import yaml
+import argparse
+
 class Manager:
 
     def __init__(self, args, data, pretrained_model):
@@ -374,6 +378,23 @@ class Manager:
         
         print('test_results', data_diagram)
 
+def apply_config_updates(args, config_dict, parser):
+        """
+        使用配置字典中的值更新 args 对象，同时进行类型转换。
+        命令行中显式给出的参数不会被覆盖。
+        """
+        type_map = {action.dest: action.type for action in parser._actions}
+        for key, value in config_dict.items():
+            if f'--{key}' not in sys.argv and hasattr(args, key):
+                expected_type = type_map.get(key)
+                if expected_type and value is not None:
+                    try:
+                        value = expected_type(value)
+                    except (TypeError, ValueError):
+                        pass
+                setattr(args, key, value)
+
+
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
     logging.set_verbosity_error()
@@ -382,16 +403,27 @@ if __name__ == '__main__':
     print('Data and Parameters Initialization...')
     
     parser = init_model()
+    parser.add_argument("--config", type=str, help="Path to the YAML config file")
     args = parser.parse_args()
 
-    print(args)
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        
+        apply_config_updates(args, yaml_config, parser)
+        
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            apply_config_updates(args, dataset_configs, parser)
 
-    args.bert_model = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
-    args.tokenizer = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
+    # args.bert_model = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
+    # args.tokenizer = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
+    args.bert_model = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
+    args.tokenizer = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
 
     data = Data(args)
-    args.model_file_dir = os.path.join(f'outputs/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
-    args.model_file = os.path.join(f'outputs/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
+    args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
+    args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
 
 
     if os.path.exists(f'{args.save_results_path}/results.csv'):
@@ -423,8 +455,8 @@ if __name__ == '__main__':
             manager_p.load_model(args)
             manager = Manager(args, data, manager_p.model)
 
-        args.model_file_dir = os.path.join(f'outputs/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
-        args.model_file = os.path.join(f'outputs/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
+        args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
+        args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
 
         # manager.train(args,data)
         

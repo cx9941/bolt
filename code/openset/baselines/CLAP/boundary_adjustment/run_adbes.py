@@ -12,6 +12,9 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 from transformers.utils import WEIGHTS_NAME
 import numpy as np
 import torch.nn.functional as F 
+from init_parameter import init_model
+import yaml
+import sys
 
 class ModelManager:
     def __init__(self, args, data, pretrained_model):
@@ -173,34 +176,40 @@ def main(args):
     manager.save_results(args)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # 添加所有在YAML中定义的参数
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--gpu_id", type=str, default="0")
-    parser.add_argument("--dataset", type=str)
-    parser.add_argument("--data_dir", type=str)
-    parser.add_argument("--known_cls_ratio", type=float)
-    parser.add_argument("--labeled_ratio", type=float)
-    parser.add_argument("--fold_idx", type=int)
-    parser.add_argument("--fold_num", type=int)
-    parser.add_argument("--lr_boundary", type=float)
-    parser.add_argument("--num_train_epochs", type=float)
-    parser.add_argument("--train_batch_size", type=int)
-    parser.add_argument("--eval_batch_size", type=int)
-    parser.add_argument("--wait_patient", type=int)
-    parser.add_argument("--feat_dim", type=int)
-    parser.add_argument("--p", type=int, default=0)
-    parser.add_argument("--n", type=int, default=0)
-    parser.add_argument("--safe1", type=float)
-    parser.add_argument("--safe2", type=float)
-    parser.add_argument("--alpha", type=float)
-    parser.add_argument("--cosine", type=lambda x: (str(x).lower() == 'true'))
-    parser.add_argument("--output_dir", type=str)
-    parser.add_argument("--pretrain_dir", type=str, help="Path to the finetuned model from stage 1")
-    parser.add_argument("--bert_model", type=str, help="Path to the folder containing tokenizer files")
-    parser.add_argument("--max_seq_length", type=int, default=128)
-    parser.add_argument("--neg_from_gen", type=lambda x: (str(x).lower() == 'true'), default=False)
-    
-    
+    parser = init_model() # init_model 来自同目录的 init_parameter.py
+    # 新增 config 和 output_dir
+    parser.add_argument('--config', type=str, default=None, help="Path to the YAML config file.")
+    # parser.add_argument("--output_dir", type=str, default='./outputs/openset/clap', help="Standardized output directory.")
     args = parser.parse_args()
+
+    # 2. 配置注入
+    def apply_config_updates(args, config_dict, parser):
+        # ... (此处省略我们标准的 apply_config_updates 函数，请从之前的文件复制过来)
+        type_map = {action.dest: action.type for action in parser._actions}
+        for key, value in config_dict.items():
+            if f'--{key}' in sys.argv or not hasattr(args, key): continue
+            expected_type = type_map.get(key)
+            if expected_type and value is not None:
+                try:
+                    if expected_type is bool or (hasattr(expected_type, '__name__') and expected_type.__name__ == 'str_to_bool'):
+                        value = str(value).lower() in ('true', '1', 't', 'yes')
+                    else: value = expected_type(value)
+                except (ValueError, TypeError): print(f"Warning: Could not cast YAML value '{value}' for key '{key}' to type {expected_type}.")
+            setattr(args, key, value)
+
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        # 先应用通用配置
+        apply_config_updates(args, yaml_config, parser)
+        # 再应用 boundary_adjustment 专属配置
+        if 'boundary_adjustment' in yaml_config:
+            apply_config_updates(args, yaml_config['boundary_adjustment'], parser)
+        # (可选) 应用数据集专属配置
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            if 'boundary_adjustment' in dataset_configs:
+                apply_config_updates(args, dataset_configs['boundary_adjustment'], parser)
+    
+    # 调用主函数
     main(args)

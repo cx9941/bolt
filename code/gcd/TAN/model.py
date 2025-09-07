@@ -201,10 +201,10 @@ class BertForModel(nn.Module):
 
     def simcse_loss(self, y_pred, temperature=0.07):
         idxs = torch.arange(0, y_pred.shape[0]).to(self.device)
-        # y_true = idxs + y_pred.shape[0]/2 - torch.floor(idxs / (y_pred.shape[0]/2)) * y_pred.shape[0]  
-        y_true = (idxs + y_pred.shape[0] // 2) % y_pred.shape[0] 
+        # y_true = idxs + y_pred.shape[0]/2 - torch.floor(idxs / (y_pred.shape[0]/2)) * y_pred.shape[0]
+        y_true = (idxs + y_pred.shape[0] // 2) % y_pred.shape[0]     
         similarities = F.cosine_similarity(y_pred.unsqueeze(1), y_pred.unsqueeze(0), dim=2)
         similarities = similarities - torch.eye(y_pred.shape[0]).to(self.device) * 1e12
         similarities = similarities / temperature
-        loss = F.cross_entropy(similarities, y_true) 
+        loss = F.cross_entropy(similarities, y_true.long()) 
         return torch.mean(loss)

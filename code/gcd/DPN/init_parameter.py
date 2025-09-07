@@ -36,7 +36,7 @@ def init_model():
     parser.add_argument("--known_cls_ratio", default=0.75, type=float, required=True, help="The number of known classes.")
 
     
-    parser.add_argument("--cluster_num_factor", default=1.0, type=float, required=True, help="The factor (magnification) of the number of clusters K.")
+    parser.add_argument("--cluster_num_factor", default=1.0, type=float, help="The factor (magnification) of the number of clusters K.")
 
     parser.add_argument('--seed', type=int, default=0, help="Random seed for initialization.")
 
@@ -69,6 +69,13 @@ def init_model():
     parser.add_argument("--lr", default=1e-5, type=float,
                         help="The learning rate for training.")  
     
+    parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
+    parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
+    
+    parser.add_argument("--gamma", default=None, type=float,
+                        help="The gamma value for loss calculation. Set via dataset_specific_configs in YAML.")
+   
+   
     
     # 在现有参数后添加以下参数
     parser.add_argument("--save_results_path", default='./results', type=str,

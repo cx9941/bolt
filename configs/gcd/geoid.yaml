@@ -1,0 +1,56 @@
+# ===================================================================
+# BOLT Platform: GeoID 算法配置文件 (v2)
+# ===================================================================
+
+# --- 必需参数 ---
+dataset: "banking"
+known_cls_ratio: 0.75
+
+# --- 常用参数 ---
+seed: 0
+data_dir: "data"
+save_results_path: "outputs/gcd/geoid"
+save_model_path: "outputs/gcd/geoid/models"
+bert_model: "./pretrained_models/bert-base-uncased"
+tokenizer: "./pretrained_models/bert-base-uncased"
+labeled_ratio: 0.1
+fold_num: 5
+fold_idx: 0
+
+# --- 训练参数 ---
+pretrain_batch_size: 100
+train_batch_size: 128
+eval_batch_size: 128
+num_pretrain_epochs: 50
+num_train_epochs: 200
+num_warm_epochs: 20
+lr_pre: !!float 5e-5
+lr: !!float 1e-3
+warmup_proportion: 0.2
+wait_patient: 20
+grad_clip: 1.0
+
+# --- 算法专属参数 ---
+method: "CLNN" 
+cluster_num_factor: 1.0
+cluster_temperature: 1.0
+feat_dim: 128
+rtr_prob: 0.25
+lambda_v: 3.0
+temp: 0.07
+view_strategy: "rtr"
+update_per_epoch: 5
+topk: 64
+
+# --- 【新增】数据集专属配置 ---
+dataset_specific_configs:
+  mcid:
+    max_seq_length: 21
+  clinc:
+    max_seq_length: 30
+  stackoverflow:
+    max_seq_length: 45
+  banking:
+    max_seq_length: 55
+  hwu:
+    max_seq_length: 55

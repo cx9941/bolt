@@ -17,6 +17,8 @@ from sklearn.neighbors import NearestNeighbors
 import re
 import time
 import openai
+import yaml
+import sys
 from together import Together
 warnings.filterwarnings('ignore')
 logging.set_verbosity_error()
@@ -55,6 +57,7 @@ class ModelManager:
         self.generator = view_generator(self.tokenizer, args.rtr_prob, args.seed)
         args.num_training_rounds = math.ceil(args.num_train_epochs / args.update_per_epoch)
         args.current_training_round = 0
+        self.num_cached_feedback = 0
         print('\nNumber of Training Rounds: ', args.num_training_rounds)
 
     def custom_collate(self, batch):
@@ -424,7 +427,6 @@ class ModelManager:
         demo_name = str(list(args.label_map_train.keys()))
         utterances = [self.tokenizer.decode(utt, skip_special_tokens=True, clean_up_tokenization_spaces=True) for utt in query]
 
-        # Construct the prompt with any number of utterances
         prompt = f"Given the following utterances and examples of some known category names, return a category name and a short category description to summarize the common {args.task} of these utterances in the format (Category Name: [category_name], Description: [description]) without explanation. \n"
         prompt += "Examples of Some Known Category Names: \n" + demo_name + "\n"
 
@@ -434,54 +436,49 @@ class ModelManager:
         if example_count < 1:
             print(f'\nCluster Interpretation Prompt Example: {example_count}\n', prompt)
 
-        openai.api_key = self.args.api_key
+        # === 【核心修改】开始 ===
+        # 使用最新的 openai 库 v1.0+ 的方式初始化客户端
+        # 这种方式能完美兼容自定义的 api_base
+        from openai import OpenAI
+        
         try:
-            if 'gpt' not in self.args.llm:
-                os.environ["TOGETHER_API_KEY"] = self.args.api_key
-                client = Together()
-                max_retries = 5
-                retry_delay = 1  # Wait for 1 seconds before retrying
-                for attempt in range(max_retries):
-                    try:
-                        completion = client.chat.completions.create(
-                            model= self.args.llm,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.0,
-                            top_p=1.0,
-                            n=1,
-                            max_tokens=50
-                        )
-                        return completion.choices[0].message.content
-                        # break  # If successful, break out of the loop
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            print(f"Attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                        else:
-                            print(f"Attempt {attempt + 1} failed: {e}. No more retries left.")
-                            raise e # If all attempts fail, raise the last exception   
-                        
-            else:
-                completion = openai.ChatCompletion.create(
-                    model= self.args.llm, #'gpt-4o-mini', # "gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.0,  # Set to 0 to remove randomness
-                    top_p=1.0,        # Use top_p sampling with the full range of tokens
-                    n=1,               # Number of responses to generate
-                    max_tokens=50     # Set a lower max_tokens value to limit response length and avoid timeout
-                )
-                return completion.choices[0].message['content']
+            client = OpenAI(
+                api_key=self.args.api_key,
+                base_url=self.args.api_base,
+            )
+
+            max_retries = 5
+            retry_delay = 2  # Wait for 2 seconds before retrying
+            for attempt in range(max_retries):
+                try:
+                    completion = client.chat.completions.create(
+                        model=self.args.llm,  # e.g., "deepseek-v3:671b"
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.0,
+                        top_p=1.0,
+                        n=1,
+                        max_tokens=50
+                    )
+                    return completion.choices[0].message.content
+                
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"LLM API call attempt {attempt + 1} failed: {e}. Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"LLM API call attempt {attempt + 1} failed: {e}. No more retries left.")
+                        # 如果所有尝试都失败，则进入下面的 fallback 逻辑
+                        raise e
+        
         except Exception as e:
-            print(f"LLM query failed with exception: {e}")
-            # Return the first three utterances as a fallback
+            print(f"LLM query failed after all retries with exception: {e}")
+            # 返回前三个话语作为备用方案
             fallback_text = " | ".join(utterances[:3])
             return f"Fallback Description: {fallback_text}"
+        # === 【核心修改】结束 ===
         
 
     def get_optimizer(self, args):
@@ -606,12 +603,44 @@ class ModelManager:
         print('pred_num',num_labels)
 
         return num_labels
-    
+
+def apply_config_updates(args, config_dict, parser):
+    """
+    使用配置字典中的值更新 args 对象，同时进行类型转换。
+    命令行中显式给出的参数不会被覆盖。
+    """
+    type_map = {action.dest: action.type for action in parser._actions}
+    for key, value in config_dict.items():
+        if f'--{key}' not in sys.argv and hasattr(args, key):
+            expected_type = type_map.get(key)
+            if expected_type and value is not None:
+                try:
+                    value = expected_type(value)
+                except (TypeError, ValueError):
+                    pass
+            setattr(args, key, value)
+
 if __name__ == '__main__':
 
     print('\nParameters Initialization...')
     parser = init_model()
+    # 1. 新增 --config 参数
+    parser.add_argument("--config", type=str, help="Path to the YAML config file")
     args = parser.parse_args()
+
+    # 2. 如果提供了 config 文件，则加载并分层应用它
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        
+        # 应用通用配置
+        apply_config_updates(args, yaml_config, parser)
+        
+        # 应用数据集专属配置
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            apply_config_updates(args, dataset_configs, parser)
+    
     result_source = 'tba'
     
     var = [args.dataset, args.running_method, args.architecture, args.known_cls_ratio, args.label_setting, args.labeled_shot, args.labeled_ratio, result_source, args.seed, args.topk, args.view_strategy, args.num_train_epochs, args.ce_weight, args.cl_weight, args.sup_weight, args.weight_ce_unsup, args.options, args.query_samples, args.update_per_epoch,

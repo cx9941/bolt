@@ -27,6 +27,4 @@ freeze_bert_parameters: True
 save_model: True
 
 # --- 输出目录设置 ---
-# 这两个路径将由 ADB.py 内部逻辑使用
-pretrain_dir: "./outputs/openset/adb/models"
-save_results_path: "./outputs/openset/adb/results"
+output_dir: "./outputs/openset/adb" 

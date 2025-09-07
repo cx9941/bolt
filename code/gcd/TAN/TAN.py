@@ -4,7 +4,7 @@ from data import Data
 from model import BertForModel, PretrainModelManager
 import numpy as np
 import torch.nn.functional as F
-from util import clustering_score
+from util import clustering_score, save_results
 from torch.utils.data import DataLoader, SequentialSampler, TensorDataset
 import torch
 from sklearn.cluster import KMeans
@@ -14,6 +14,8 @@ from pytorch_pretrained_bert.optimization import BertAdam
 import math
 import warnings
 from scipy.special import softmax
+import yaml
+import sys
 
 
 class ModelManager:
@@ -88,8 +90,25 @@ class ModelManager:
         feats = feats.cpu().numpy()
         km = KMeans(n_clusters = self.num_labels, n_init=20, random_state=args.seed).fit(feats)
         y_true = labels.cpu().numpy()
+        
+        # 调用更新后的评估函数
         results = clustering_score(y_true, km.labels_, data.known_lab)
-        print(results)
+        
+        # 按照新的格式，更清晰地打印结果
+        print("----------------- Evaluation Results -----------------")
+        print(f"ACC:        {results['ACC']:.2f}")
+        print(f"H-Score:    {results['H-Score']:.2f}")
+        print(f"K-ACC:      {results['K-ACC']:.2f}")
+        print(f"N-ACC:      {results['N-ACC']:.2f}")
+        print(f"NMI:        {results['NMI']:.2f}")
+        print(f"ARI:        {results['ARI']:.2f}")
+        print("------------------------------------------------------")
+        save_results(
+            method_name='TAN',      # 硬编码方法名为 'TAN'
+            args=args,              # 传递所有超参数
+            results=results,        # 传递评估结果字典
+            num_labels=self.num_labels # 传递最终的簇数 K
+        )
         
     def update_cluster_ids(self, pseudo_labels, args, data):
         train_data = TensorDataset(data.semi_input_ids, data.semi_input_mask, data.semi_segment_ids, pseudo_labels)
@@ -149,9 +168,11 @@ class ModelManager:
                 loss_pro = loss_i2p + loss_i2i + loss_p2i + loss_u
 
                 try:
+                    # batch = labelediter.next()
                     batch = next(labelediter)
                 except StopIteration:
                     labelediter = iter(data.train_labeled_dataloader)
+                    # batch = labelediter.next()
                     batch = next(labelediter)
                 batch = tuple(t.to(self.device) for t in batch)
                 input_ids, input_mask, segment_ids, label_ids = batch
@@ -223,7 +244,8 @@ class ModelManager:
             for j in range(self.num_known):
                 dist_matrix[i, j] = -(np.linalg.norm(means_unlabel[i] - proto_label[j])) / (feats_unlabel.shape[-1] ** (1/2))
                 # wasser_matrix[i, j] = -(Wasserstein(means_unlabel[i], vars_unlabel[i], proto_label[j], vars_label[j])) / (feats_unlabel.shape[-1] ** (1/2))
-            index = dist_matrix[i].argsort()[0:self.num_known-args.topk]
+            # index = dist_matrix[i].argsort()[0:self.num_known-args.topk]
+            index = dist_matrix[i].argsort()[0:int(self.num_known-args.topk)]
             dist_matrix[i][index] = -1e9
             dist_matrix[i] = softmax(dist_matrix[i])
 
@@ -303,6 +325,19 @@ class ModelManager:
 
         return num_labels
 
+def apply_config_updates(args, config_dict, parser):
+    """
+    使用配置字典中的值更新 args 对象，同时进行类型转换。
+    命令行中显式给出的参数不会被覆盖。
+    """
+    type_map = {action.dest: action.type for action in parser._actions}
+    for key, value in config_dict.items():
+        if f'--{key}' not in sys.argv and hasattr(args, key):
+            expected_type = type_map.get(key)
+            if expected_type and value is not None:
+                value = expected_type(value)
+            setattr(args, key, value)
+
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
     logging.set_verbosity_error()
@@ -310,7 +345,26 @@ if __name__ == '__main__':
 
     print('Data and Parameters Initialization...')
     parser = init_model()
+    parser.add_argument("--config", type=str, help="Path to the YAML config file")
     args = parser.parse_args()
+
+    # --- 3. 加载 YAML 文件并执行“智能覆盖” ---
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        
+        # 应用来自 YAML 的通用配置
+        apply_config_updates(args, yaml_config, parser)
+        
+        # 应用来自 YAML 的数据集专属配置
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            apply_config_updates(args, dataset_configs, parser)
+
+    args.bert_model = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
+    # args.tokenizer = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
+
+
     data = Data(args)
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 

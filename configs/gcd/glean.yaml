@@ -1,0 +1,91 @@
+# ===================================================================
+# BOLT Platform: Glean 算法配置文件 (v2)
+# ===================================================================
+
+# --- 必需参数 ---
+dataset: "banking"
+known_cls_ratio: 0.1
+
+# --- 常用参数 ---
+seed: 42
+gpu_id: "0"
+data_dir: "data"
+save_results_path: "outputs/gcd/glean/results"
+save_model_path: "outputs/gcd/glean/models"
+pretrain_dir: "outputs/gcd/glean/premodels"
+bert_model: "./pretrained_models/bert-base-uncased"
+tokenizer: "./pretrained_models/bert-base-uncased"
+experiment_name: "deepseek-v3:671b"
+running_method: "GCDLLMs"
+
+# --- 训练与流程控制 ---
+num_pretrain_epochs: 5
+num_train_epochs: 2
+lr_pre: !!float 5e-5
+lr: !!float 1e-5
+pretrain_batch_size: 48
+train_batch_size: 48
+eval_batch_size: 64
+warmup_proportion: 0.1
+wait_patient: 20
+grad_clip: 1.0
+
+# --- 数据集与标签设置 ---
+label_setting: "ratio"
+labeled_ratio: 0.1
+labeled_shot: 10
+fold_num: 5
+fold_idx: 0
+
+# --- Glean 核心算法参数 ---
+architecture: "Loop"
+# topk 从这里移到下面的专属配置中
+temp: 0.07
+view_strategy: "rtr"
+update_per_epoch: 5
+
+# --- DistillLoss 相关参数 ---
+memax_weight: 1.0
+warmup_teacher_temp: 0.07
+teacher_temp: 0.04
+warmup_teacher_temp_epochs: 5
+ce_weight: 1.0
+cl_weight: 1.0
+sup_weight: 1.0
+weight_ce_unsup: 0.0
+weight_cluster_instance_cl: 0.1
+
+# --- LLM 与 Prompt 相关参数 ---
+api_key: "6c5c96209c4ef126a87fbe9840fab7c346b4c6fb6a57529fce7dea01c683fd1b" # 建议从环境变量或安全方式读取
+api_base: "https://uni-api.cstcloud.cn/v1"
+llm: "deepseek-v3:671b"
+query_samples: 500
+options: 5
+interpret_sampling_strategy: "nearest_center"
+interpret_num_representatives: 10
+sampling_strategy: "highest"
+allocation_degree: 1.0
+options_cluster_instance_ratio: 0.5
+known_demo_num_per_class: 5
+known_demo_num_per_class_c: 2
+filter_threshold: 0.8
+filter_threshold_c: 0.85
+
+# --- 消融实验参数 ---
+prompt_ablation: "full"
+component_ablation: "full"
+
+# --- 【新增】数据集专属配置 ---
+dataset_specific_configs:
+  clinc:
+    max_seq_length: 30
+    topk: 50
+    task: "intent"
+  stackoverflow:
+    max_seq_length: 45
+    topk: 500
+    task: "intent"
+  banking:
+    max_seq_length: 55
+    topk: 50
+    task: "intent"

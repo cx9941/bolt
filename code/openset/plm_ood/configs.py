@@ -1,14 +1,19 @@
+# configs.py (重构后)
+
 import argparse
 import os
 import logging
 
-def get_plm_ood_config():
+def create_parser():
+    """
+    定义所有命令行参数并返回一个ArgumentParser对象。
+    这个函数只负责“定义”，不负责“解析”。
+    """
     parser = argparse.ArgumentParser()
     
-    # --- 基础参数定义 (YAML中的同名参数会覆盖这里的default值) ---
+    # --- 基础参数定义 ---
     parser.add_argument("--dataset_name", default="stackoverflow", type=str)
-    # 改动1：将默认路径修正为相对于项目根目录
-    parser.add_argument("--data_dir", default="./data", type=str) 
+    parser.add_argument("--data_dir", default="./data", type=str)
     parser.add_argument("--reg_loss", default="npo", type=str, choices=['normal', 'vos', 'npo'])
     parser.add_argument("--rate", default=0.25, type=float)
     parser.add_argument("--labeled_ratio", default=1.0, type=float)
@@ -23,13 +28,14 @@ def get_plm_ood_config():
     parser.add_argument("--lr", default=5e-5, type=float)
     parser.add_argument("--train_batch_size", default=16, type=int)
     parser.add_argument("--eval_batch_size", default=32, type=int)
-    
-    # 改动2：添加 model_path 参数，使其可以从YAML接收
     parser.add_argument("--model_path", default=None, type=str)
     
-    # 改动3：使用 parse_args()，因为我们的工作流能确保参数匹配
-    args = parser.parse_args()
+    return parser
 
+def finalize_config(args):
+    """
+    接收已经解析完毕的args对象，完成派生路径的计算和日志的设置。
+    """
     # --- 派生参数计算 (动态生成路径) ---
     args.data_identity = f"{args.dataset_name}_{args.labeled_ratio}_{args.rate}_{args.fold_num}_{args.fold_idx}"
     run_identity = f"{args.data_identity}{args.backbone}_{args.seed}"
@@ -49,10 +55,9 @@ def get_plm_ood_config():
 
     args.metric_file = f"{args.metric_dir}/epoch_{args.n_epochs}_seed_{args.seed}.csv"
 
-    # 改动4：最关键的改动，优先使用YAML中的model_path，如果没有才使用备用路径
+    # --- model_path 备用逻辑 ---
     if args.model_path is None:
-        logging.warning("model_path not specified in YAML, generating a fallback path. It is recommended to specify this in the YAML file.")
-        # 备用路径也必须是相对于项目根目录
+        logging.warning("model_path not specified, generating a fallback path. It is recommended to specify this in the YAML file.")
         args.model_path = f"./pretrained_models/{args.backbone}"
     else:
         logging.info(f"Using model_path specified in config: {args.model_path}")

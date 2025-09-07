@@ -64,33 +64,49 @@ class OtherArguments:
     """
     模型的训练参数、其他超参等 可以从 json 里面设置，其余的均为自动生成或者写死
     """
-    # 基础模型
-    model_name_or_path: str = field(
+    # --- 将所有打算从 YAML 加载的必需参数，全部改为 Optional 并设置 default=None ---
+    model_name_or_path: Optional[str] = field(
+        default=None,
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
-
-    supcont_pre_epoches: int = field(
+    supcont_pre_epoches: Optional[int] = field(
+        default=None,
         metadata={"help": "训练几个 epoch"}
     )
-
-    loss_type: str = field(
-        metadata={"help": "损失函数形式: original loss 表示每层分类器的权重一样，increase 则表示随着层数变高，每层分类器权重升高, plain 表示只使用最后一层做分类"}
+    loss_type: Optional[str] = field(
+        default=None,
+        metadata={"help": "损失函数形式"}
     )
-
-    diversity_loss_weight: float = field(
-        metadata={"help": "diversity_loss 权重，根据论文，应该在 0-1 之间"}
+    diversity_loss_weight: Optional[float] = field(
+        default=None,
+        metadata={"help": "diversity_loss 权重"}
     )
-
-    scale: float = field(
+    scale: Optional[float] = field(
+        default=None,
         metadata={"help": "ensemble scale_ind 参数"}
     )
+    adv_k: Optional[int] = field(
+        default=None,
+        metadata={"help": "Adv k"}
+    )
+    adv_lr: Optional[float] = field(
+        default=None,
+        metadata={"help": "Adv lr"}
+    )
+    adv_init_mag: Optional[float] = field(
+        default=None,
+        metadata={"help": "Adv init mag"}
+    )
+    adv_max_norm: Optional[float] = field(
+        default=None,
+        metadata={"help": "Adv max norm"}
+    )
 
-    # adv_k 小于 0，则使用普通的 train step；否则使用 attack
-    adv_k: int = field()
-    adv_lr: float = field()
-    adv_init_mag: float = field()
-    adv_max_norm: float = field()
-
+    # --- 其他本身就有默认值的字段保持不变 ---
+    config: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to the YAML config file for base configuration."}
+    )
     scale_ood: float = field(
         default=-1,
         metadata={"help": "ensemble scale_ood 参数"}

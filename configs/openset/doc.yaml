@@ -6,9 +6,9 @@ seed: 0
 gpu_id: "0"
 
 # --- 数据与任务设置 ---
-dataset: "banking"             # 对应原脚本的 dataset_name 参数
+dataset: "banking"
 data_dir: "./data"
-known_cls_ratio: 0.25          # 对应原脚本的 ratio 参数
+known_cls_ratio: 0.25
 labeled_ratio: 1.0
 fold_idx: 0
 fold_num: 5

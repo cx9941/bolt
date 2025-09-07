@@ -59,6 +59,8 @@ from transformers.trainer_utils import is_main_process
 
 from transformers import AutoModelForSequenceClassification
 import torch
+import yaml
+import argparse
 
 task_to_keys = {
     "cola": ("sentence", None),
@@ -219,11 +221,50 @@ def main():
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
+    # -------------------- 1. 全新的配置加载逻辑 --------------------
+    # 创建一个临时解析器，只为找到 --config 文件路径
+    conf_parser = argparse.ArgumentParser(add_help=False)
+    conf_parser.add_argument("--config", help="Path to the YAML config file")
+    conf_args, remaining_argv = conf_parser.parse_known_args()
 
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        model_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-    else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    # 从 YAML 加载基础配置
+    with open(conf_args.config, 'r') as f:
+        config_dict = yaml.safe_load(f)
+
+    # 从命令行读取覆盖参数
+    # HfArgumentParser 可以直接解析剩余的参数
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    
+    # ❗️ 核心步骤：将YAML配置和命令行覆盖参数合并后，再进行解析
+    # HfArgumentParser 的 parse_args_into_dataclasses 接受一个 `args` 列表参数
+    # 我们可以先加载YAML，然后用命令行参数覆盖，最后统一解析
+    # 为了简单起见，我们先加载YAML，然后让HfArgumentParser处理命令行覆盖
+    # (注意：HfArgumentParser本身不支持优雅的优先级覆盖，我们需要手动实现)
+    
+    # 构造一个字典，包含命令行传入的覆盖值
+    override_dict = {}
+    for i in range(0, len(remaining_argv), 2):
+        key = remaining_argv[i].lstrip('-')
+        value = remaining_argv[i+1]
+        # 尝试转换类型
+        try: value = int(value)
+        except ValueError:
+            try: value = float(value)
+            except ValueError:
+                if value.lower() == 'true': value = True
+                elif value.lower() == 'false': value = False
+        override_dict[key] = value
+
+    # 合并字典，命令行优先级更高
+    config_dict.update(override_dict)
+    
+    # 使用最终的配置字典来填充 dataclasses
+    model_args, data_args, training_args = parser.parse_dict(config_dict)
+
+    # if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+    #     model_args, data_args, training_args, fitlog_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    # else:
+    #     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     
 

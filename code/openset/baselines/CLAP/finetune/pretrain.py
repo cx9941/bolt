@@ -57,7 +57,7 @@ class PretrainModelManager:
         y_true = total_labels.cpu().numpy()
         acc = round(accuracy_score(y_true, y_pred) * 100, 2)
         try:
-            classfication = classification_report(y_true, y_pred, digits=4, target_names=data.train_labels)
+            classfication = classification_report(y_true, y_pred, digits=4, target_names=data.label_list)
         except Exception as e:
             print('error: ', e)
             classfication = classification_report(y_true, y_pred, digits=4)

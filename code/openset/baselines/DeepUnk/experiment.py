@@ -1,3 +1,5 @@
+# experiment.py (已改造)
+
 import os
 import argparse
 import json
@@ -14,6 +16,8 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.models import Model
+import yaml  # <-- 新增
+import sys   # <-- 新增
 
 from models import BiLSTM_LMCL
 from utils import set_allow_growth
@@ -27,39 +31,27 @@ def main(args):
     rn.seed(args.seed)
     tf.random.set_seed(args.seed)
 
-    # 2. (核心改造) 标准化数据加载
+    # 2. 标准化数据加载
     print("Loading standardized data...")
-    # a. 加载已知类列表
     known_label_path = os.path.join(args.data_dir, args.dataset, 'label', f'fold{args.fold_num}', f'part{args.fold_idx}', f'label_known_{args.known_cls_ratio}.list')
     seen_labels = pd.read_csv(known_label_path, header=None)[0].tolist()
     n_class_seen = len(seen_labels)
 
-    # b. 加载 .tsv 数据文件
     origin_train_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'origin_data', 'train.tsv'), sep='\t')
     origin_valid_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'origin_data', 'dev.tsv'), sep='\t')
     origin_test_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'origin_data', 'test.tsv'), sep='\t')
-    
     labeled_train_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'train.tsv'), sep='\t')
     labeled_valid_df = pd.read_csv(os.path.join(args.data_dir, args.dataset, 'labeled_data', str(args.labeled_ratio), 'dev.tsv'), sep='\t')
-
     
-    df_train = labeled_train_df
-    df_train['text'] = origin_train_df['text']
-    df_valid = labeled_valid_df # 使用完整的 dev.tsv 作为验证集
-    df_valid['text'] = origin_valid_df['text']
-    df_test = origin_test_df  # 使用完整的 test.tsv 作为测试集
+    df_train, df_valid, df_test = labeled_train_df.copy(), labeled_valid_df.copy(), origin_test_df.copy()
+    df_train['text'], df_valid['text'] = origin_train_df['text'], origin_valid_df['text']
 
-    # c. 筛选数据
     train_seen_df = df_train[(df_train['label'].isin(seen_labels)) & (df_train['labeled'])]
-    valid_seen_df = df_valid[(df_valid['label'].isin(seen_labels)) & (df_valid['labeled'])]
+    valid_seen_df = df_valid[df_valid['label'].isin(seen_labels)]
     
-    all_labels = df_train['label'].unique().tolist()
-    y_cols_unseen = [l for l in all_labels if l not in seen_labels]
-
-    # 3. (核心改造) 文本预处理 (修复数据泄露)
+    # 3. 文本预处理
     print("Preprocessing text data...")
     tokenizer = Tokenizer(num_words=10000, oov_token="<UNK>", filters='!"#$%&()*+-/:;<=>@[\]^_`{|}~')
-    # 仅在训练集上训练tokenizer
     tokenizer.fit_on_texts(train_seen_df['text'].astype(str))
     word_index = tokenizer.word_index
     
@@ -79,41 +71,30 @@ def main(args):
     y_test_mask = df_test['label'].copy()
     y_test_mask[~y_test_mask.isin(seen_labels)] = 'unseen'
 
-    # 5. 加载Glove词向量 (逻辑保留)
+    # 5. 加载Glove词向量
     print("Loading GloVe embeddings...")
     MAX_FEATURES = min(10000, len(word_index)) + 1
     def get_coefs(word,*arr): return word, np.asarray(arr, dtype='float32')
-    embeddings_index = dict(get_coefs(*o.strip().split()) for o in open(args.embedding_file))
-    all_embs = np.stack(list(embeddings_index.values()))
-    emb_mean, emb_std = all_embs.mean(), all_embs.std()
+    embeddings_index = dict(get_coefs(*o.strip().split()) for o in open(args.embedding_file, encoding='utf-8'))
+    emb_mean, emb_std = np.mean(list(embeddings_index.values()), axis=0), np.std(list(embeddings_index.values()), axis=0)
     embedding_matrix = np.random.normal(emb_mean, emb_std, (MAX_FEATURES, 300))
     for word, i in word_index.items():
-        if i >= MAX_FEATURES: continue
-        embedding_vector = embeddings_index.get(word)
-        if embedding_vector is not None: embedding_matrix[i] = embedding_vector
+        if i < MAX_FEATURES and (embedding_vector := embeddings_index.get(word)) is not None:
+            embedding_matrix[i] = embedding_vector
 
-    # 6. 模型训练 (逻辑保留)
+    # 6. 模型训练
     print("Training model...")
-    # (核心改造) 标准化输出路径
-    os.makedirs(os.path.join(args.output_dir, 'ckpt'), exist_ok=True)
-    filepath = os.path.join(args.output_dir, 'ckpt', f'model_{args.dataset}_{args.known_cls_ratio}_{args.seed}.h5')
+    ckpt_dir = os.path.join(args.output_dir, 'ckpt')
+    os.makedirs(ckpt_dir, exist_ok=True)
+    filepath = os.path.join(ckpt_dir, 'model.h5')
     
     checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='auto', save_weights_only=False)
     early_stop = EarlyStopping(monitor='val_loss', patience=20, mode='auto') 
     
-    model = BiLSTM_LMCL(
-        max_seq_len=None,
-        max_features=MAX_FEATURES,
-        embedding_dim=300,
-        output_dim=n_class_seen,
-        embedding_matrix=embedding_matrix,
-        learning_rate=args.learning_rate,
-        model_img_path=None
-    )
-    model.fit(X_train_seen, y_train_onehot, epochs=args.n_epochs, batch_size=args.train_batch_size, 
-              validation_data=(X_valid_seen, y_valid_onehot), shuffle=True, verbose=1, callbacks=[checkpoint, early_stop])
+    model = BiLSTM_LMCL(max_seq_len=None, max_features=MAX_FEATURES, embedding_dim=300, output_dim=n_class_seen, embedding_matrix=embedding_matrix, learning_rate=args.learning_rate)
+    model.fit(X_train_seen, y_train_onehot, epochs=args.n_epochs, batch_size=args.train_batch_size, validation_data=(X_valid_seen, y_valid_onehot), shuffle=True, verbose=1, callbacks=[checkpoint, early_stop])
 
-    # 7. 评估 (逻辑保留)
+    # 7. 评估
     print("Evaluating model...")
     y_pred_proba = model.predict(X_test)
     
@@ -129,17 +110,11 @@ def main(args):
     y_pred = df_seen.idxmax(axis=1)
     y_pred[y_pred_lof[y_pred_lof==-1].index] = 'unseen'
     
-    # 8. (核心改造) 标准化结果输出
+    # 8. 标准化结果输出
     print("Saving results...")
     report = classification_report(y_test_mask, y_pred, output_dict=True, zero_division=0)
     
-    final_results = {}
-    final_results['dataset'] = args.dataset
-    final_results['seed'] = args.seed
-    final_results['known_cls_ratio'] = args.known_cls_ratio
-    final_results['ACC'] = report['accuracy']
-    final_results['F1'] = report['macro avg']['f1-score']
-    
+    final_results = {'dataset': args.dataset, 'seed': args.seed, 'known_cls_ratio': args.known_cls_ratio, 'ACC': report['accuracy'], 'F1': report['macro avg']['f1-score']}
     known_f1_scores = [report[label]['f1-score'] for label in le.classes_ if label in report]
     final_results['K-F1'] = sum(known_f1_scores) / len(known_f1_scores) if known_f1_scores else 0.0
     final_results['N-F1'] = report['unseen']['f1-score'] if 'unseen' in report else 0.0
@@ -148,22 +123,22 @@ def main(args):
     os.makedirs(metric_dir, exist_ok=True)
     results_path = os.path.join(metric_dir, 'results.csv')
 
+    df_to_save = pd.DataFrame([final_results])
     if not os.path.exists(results_path):
-        df_to_save = pd.DataFrame([final_results])
         df_to_save.to_csv(results_path, index=False)
     else:
-        existing_df = pd.read_csv(results_path)
-        new_row_df = pd.DataFrame([final_results])
-        updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
-        updated_df.to_csv(results_path, index=False)
+        pd.concat([pd.read_csv(results_path), df_to_save], ignore_index=True).to_csv(results_path, index=False)
         
     print(f"\nResults have been saved to: {results_path}")
-    print("Appended new result row:")
-    print(pd.DataFrame([final_results]))
+    print("Appended new result row:"); print(df_to_save)
 
+
+# --- 核心改造：将参数解析和配置注入逻辑放在主入口 ---
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # 添加所有在YAML中定义的参数
+    
+    # 定义所有参数，与 YAML 文件保持一致
+    parser.add_argument('--config', type=str, default=None, help="Path to the YAML config file.")
     parser.add_argument("--dataset", type=str, default="banking")
     parser.add_argument("--known_cls_ratio", type=float, default=0.25)
     parser.add_argument("--n_epochs", type=int, default=8)
@@ -177,6 +152,30 @@ if __name__ == '__main__':
     parser.add_argument("--fold_num", type=int, default=5)
     parser.add_argument("--embedding_file", type=str, default="./pretrained_models/glove.6B.300d.txt")
     parser.add_argument("--output_dir", type=str, default="./outputs/openset/deepunk")
-    
+
     args = parser.parse_args()
+
+    def apply_config_updates(args, config_dict, parser):
+        type_map = {action.dest: action.type for action in parser._actions}
+        for key, value in config_dict.items():
+            if f'--{key}' in sys.argv or not hasattr(args, key):
+                continue
+            expected_type = type_map.get(key)
+            if expected_type and value is not None:
+                try:
+                    if expected_type is bool: value = str(value).lower() in ('true', '1', 't', 'yes')
+                    else: value = expected_type(value)
+                except (ValueError, TypeError): print(f"Warning: Could not cast YAML value '{value}' for key '{key}' to type {expected_type}.")
+            setattr(args, key, value)
+
+    # 执行配置注入
+    if args.config:
+        with open(args.config, 'r') as f:
+            yaml_config = yaml.safe_load(f)
+        apply_config_updates(args, yaml_config, parser)
+        if 'dataset_specific_configs' in yaml_config:
+            dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+            apply_config_updates(args, dataset_configs, parser)
+    
+    # 调用主函数，开始执行任务
     main(args)

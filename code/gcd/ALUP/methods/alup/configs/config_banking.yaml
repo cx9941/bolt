@@ -1,13 +1,13 @@
-bert_model: '../../pretrained_models/bert-base-uncased'
-data_dir: '../../data'
+bert_model: '../../../pretrained_models/bert-base-uncased'
+data_dir: '../../../data'
 llm_model_name: 'deepseek-v3:671b'
 api_base: 'https://uni-api.cstcloud.cn/v1'
 logger_name: 'Discovery'
 
 mode: 'train'
 
-num_pretrain_epochs: 100
-num_train_epochs: 34
+num_pretrain_epochs: 1
+num_train_epochs: 1
 
 embed_feat_dim: 768
 head_feat_dim: 128
@@ -17,7 +17,7 @@ warmup_proportion: 0.1
 lr_pre: 0.00005
 lr: 0.00001
 
-gpu_id: 4
+gpu_id: 0
 
 pretrain_batch_size: 16
 train_batch_size: 32

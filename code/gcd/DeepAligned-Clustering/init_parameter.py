@@ -21,12 +21,10 @@ def init_model():
     
     parser.add_argument("--warmup_proportion", default=0.1, type=float)
 
-    parser.add_argument("--freeze_bert_parameters", default=True, help="Freeze the last parameters of BERT.")
+    parser.add_argument("--freeze_bert_parameters", action="store_true", help="Freeze the last parameters of BERT.")
+    parser.add_argument("--save_model", action="store_true", help="Save trained model.")
+    parser.add_argument("--pretrain", action="store_true", help="Pre-train the model with labeled data.")
 
-    parser.add_argument("--save_model", default=True, help="Save trained model.")
-
-    parser.add_argument("--pretrain", default=True, help="Pre-train the model with labeled data.")
-    
 
     parser.add_argument("--dataset", default='banking', type=str,
                         help="The name of the dataset to train selected.")
@@ -64,5 +62,7 @@ def init_model():
     parser.add_argument("--lr", default=5e-5, type=float,
                         help="The learning rate for training.")  
     
+    parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
+    parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
     
     return parser
