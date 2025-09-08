@@ -33,7 +33,7 @@ do
     # --- 4. 执行区 (两阶段) ---
     # 第 1 阶段: 执行预训练和基线评估 (baseline.py)
     echo "--- Stage 1: Running Pre-training (baseline.py) ---"
-    python code/gcd/SDC/baseline.py \
+    python code/gcd/baselines/SDC/baseline.py \
         --config $CONFIG_FILE \
         --dataset $dataset \
         --known_cls_ratio $known_cls_ratio \
@@ -48,7 +48,7 @@ do
     
     # 第 2 阶段: 执行正式训练 (train.py)
     echo "--- Stage 2: Running Main Training (train.py) ---"
-    python code/gcd/SDC/train.py \
+    python code/gcd/baselines/SDC/train.py \
         --config $CONFIG_FILE \
         --dataset $dataset \
         --known_cls_ratio $known_cls_ratio \

@@ -39,7 +39,7 @@ do
     if [ "$RUN_STAGE_1" = true ]; then
         # 第 1 阶段: 执行预训练和对比学习
         echo "--- Stage 1: Running Pre-training & Contrastive Learning ---"
-        python code/gcd/ALUP/run.py \
+        python code/gcd/baselines/ALUP/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \
@@ -57,7 +57,7 @@ do
     if [ "$RUN_STAGE_2" = true ]; then
         # 第 2 阶段: 执行主动学习微调
         echo "--- Stage 2: Running Active Learning Fine-tuning ---"
-        python code/gcd/ALUP/run.py \
+        python code/gcd/baselines/ALUP/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \

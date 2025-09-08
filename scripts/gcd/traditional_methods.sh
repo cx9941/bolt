@@ -26,7 +26,7 @@ do
     echo "========================================================================"
 
     # --- 3. 执行区 (直接调用) ---
-    python code/gcd/traditional_methods/main.py \
+    python code/gcd/baselines/traditional_methods/main.py \
         --config $CONFIG_FILE \
         --dataset $dataset \
         --known_cls_ratio $known_cls_ratio \

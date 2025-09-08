@@ -30,7 +30,7 @@ do
 
     # --- 3. 执行区 (直接调用) ---
     # 移除了 parse_yaml.py，直接向 loop.py 传递参数
-    python code/gcd/LOOP/loop.py \
+    python code/gcd/baselines/LOOP/loop.py \
         --config $CONFIG_FILE \
         --dataset $dataset \
         --known_cls_ratio $known_cls_ratio \
