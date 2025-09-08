@@ -7,7 +7,7 @@ set -o errexit
 
 # --- 1. 控制面板 ---
 # 通过修改下面的 true/false 来选择要执行的阶段
-RUN_STAGE_1=false   # 阶段1: 执行预训练 (pretrain.py)
+RUN_STAGE_1=true   # 阶段1: 执行预训练 (pretrain.py)
 RUN_STAGE_2=true   # 阶段2: 执行OOD训练 (train_ood.py)
 
 # --- 2. 基础配置 ---

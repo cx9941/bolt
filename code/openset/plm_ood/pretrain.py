@@ -11,6 +11,7 @@ from transformers import BitsAndBytesConfig
 import logging
 from sklearn.metrics import classification_report
 import numpy as np
+from transformers import EarlyStoppingCallback
 
 from utils import get_best_checkpoint, create_model
 # --- 改动 1: 导入新的数据加载函数 ---
@@ -65,6 +66,10 @@ def run_pretraining(args):
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.eos_token_id = tokenizer.eos_token_id
 
+    early_stop_patience = getattr(args, "early_stop_patience", 3)
+    early_stop_delta = getattr(args, "early_stop_delta", 0.0)
+
+
     # 设置训练参数
     training_args = TrainingArguments(
         output_dir=args.checkpoint_path,
@@ -77,6 +82,11 @@ def run_pretraining(args):
         weight_decay=0.01,
         save_strategy='epoch',
         save_total_limit=1,
+        # —— 为早停配套的设置 ——
+        load_best_model_at_end=True,       # 训练结束回滚到最佳模型
+        metric_for_best_model="f1-score",  # 与 compute_metrics 的键一致
+        greater_is_better=True,            # f1 越大越好
+        report_to=[],                      # 彻底关闭外部上报（已禁用 wandb）
     )
 
     # 定义Trainer
@@ -90,7 +100,13 @@ def run_pretraining(args):
         train_dataset=train_dataset,
         eval_dataset=dataset_in_eval,
         compute_metrics=compute_metrics,
-        data_collator=collate_batch
+        data_collator=collate_batch,
+        callbacks=[
+            EarlyStoppingCallback(
+                early_stopping_patience=early_stop_patience,     # 连续若干 eval 指标无提升则停止
+                early_stopping_threshold=early_stop_delta        # 最小提升幅度（小数，比如 1e-4）
+            )
+        ],
     )
     # --- 改动结束 ---
 

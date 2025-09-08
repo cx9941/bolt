@@ -25,3 +25,6 @@ reg_loss: "npo"
 
 # --- 输出目录设置 ---
 output_dir: "./outputs/openset/plm_ood"
+
+early_stop_patience: 3
+early_stop_delta: 0.0
