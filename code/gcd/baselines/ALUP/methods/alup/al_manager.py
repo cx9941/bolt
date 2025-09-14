@@ -197,6 +197,14 @@ class ALManager:
         indices = self.get_neighbor_inds(args, self.llm_augmented_dataset, self.llm_augmented_dataloader)
         self.get_neighbor_dataset(args, self.llm_augmented_dataset, indices)
 
+        # --- Early Stopping (AL finetune) ---
+        patience = getattr(args, "early_stopping_patience", 3)
+        min_delta = getattr(args, "early_stopping_min_delta", 0.0)
+        wait = 0
+        best_score_scalar = float("-inf")
+        monitor_sum = getattr(args, "monitor_sum_metrics", True)  # True=ACC+ARI+NMI, False=ACC
+
+        
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
 
@@ -266,6 +274,20 @@ class ALManager:
                 best_metrics['Epoch'] = epoch
                 best_model = copy.deepcopy(self.model)
                 # save_model(args, best_model, epoch)
+
+            curr_score = (results['ACC'] + results['ARI'] + results['NMI']) if monitor_sum else results['ACC']
+
+            if curr_score > best_score_scalar + min_delta:
+                best_score_scalar = curr_score
+                wait = 0
+            else:
+                wait += 1
+                self.logger.info("EarlyStopping: no improvement (wait=%d/%d)", wait, patience)
+                if wait >= patience:
+                    self.logger.info("EarlyStopping: patience reached, stopping AL finetune.")
+                    self.model = best_model
+                    break
+
 
             self.logger.info("***** Curr and Best model metrics *****")
             self.logger.info(

@@ -16,6 +16,8 @@ import warnings
 from scipy.special import softmax
 import yaml
 import sys
+import copy
+
 
 
 class ModelManager:
@@ -84,6 +86,16 @@ class ModelManager:
                          t_total = self.num_training_steps)   
         return optimizer
 
+    def _evaluate_split(self, args, dataloader):
+        self.model.eval()
+        feats, labels = self.get_features_labels(dataloader, self.model, args)
+        feats = feats.cpu().numpy()
+        km = KMeans(n_clusters=self.num_labels, n_init=20, random_state=args.seed).fit(feats)
+        y_true = labels.cpu().numpy()
+        # 直接使用现有的度量计算
+        return clustering_score(y_true, km.labels_, self.data.known_lab)
+
+
     def evaluation(self, args, data):
         self.model.eval()
         feats, labels = self.get_features_labels(data.test_dataloader, self.model, args)
@@ -121,7 +133,16 @@ class ModelManager:
         train_dataloader, proto_label, proto_calibration, maps = self.calibration(data, args)
         self.proto_label = proto_label
         self.proto_calibration = proto_calibration
-    
+        # --- Early Stopping (main training) additions ---
+        best_model = copy.deepcopy(self.model)
+        best_epoch = 0
+        wait = 0
+        best_score_scalar = float("-inf")
+        def get_score_scalar(metrics, mode):
+            if mode.lower() == "sum":
+                return metrics["ACC"] + metrics["NMI"] + metrics["ARI"] + metrics["H-Score"]
+            return metrics.get(mode, float("-inf"))
+        
         for epoch in range(1, int(args.num_train_epochs)+1, 1):
             feats_label, labels = self.get_features_labels(data.train_labeled_dataloader, self.model, args)
             for i in range(self.num_known):
@@ -187,6 +208,32 @@ class ModelManager:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
             print('Epoch ' + str(epoch) + ' loss:' + str(tr_loss/nb_tr_steps))
+
+            # --- 验证评估 + 早停判断（新增） ---
+            val_metrics = self._evaluate_split(args, data.eval_dataloader)
+            score_scalar = get_score_scalar(val_metrics, args.es_metric)
+            improved = (score_scalar - best_score_scalar) > args.es_min_delta
+
+            if improved:
+                best_score_scalar = score_scalar
+                best_epoch = epoch
+                wait = 0
+                best_model = copy.deepcopy(self.model)
+                if args.save_best:
+                    # 可选：在 outputs 目录下保存主训最佳权重
+                    ckpt_dir = getattr(args, "output_dir", "./outputs")
+                    os.makedirs(ckpt_dir, exist_ok=True)
+                    torch.save(best_model.state_dict(), os.path.join(ckpt_dir, "model_epoch_best.pt"))
+            else:
+                wait += 1
+                if wait >= args.es_patience:
+                    print(f"[EarlyStop] No improvement for {args.es_patience} epochs. Stop at epoch {epoch}. "
+                        f"Best epoch: {best_epoch}, best {args.es_metric}={best_score_scalar:.2f}")
+                    break
+    
+        # 恢复到最佳模型
+        if best_model is not None:
+            self.model = best_model
               
     def load_pretrained_model(self):
         pretrained_dict = self.pretrained_model.state_dict()

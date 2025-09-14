@@ -17,8 +17,8 @@ bert_model: "./pretrained_models/bert-base-uncased"
 output_base_dir: "./outputs/gcd/alup" 
 
 # --- 训练超参数 ---
-num_pretrain_epochs: 1 # 对应ALUP的预训练阶段
-num_train_epochs: 1     # 对应ALUP的对比学习和主动学习微调阶段
+num_pretrain_epochs: 100 # 对应ALUP的预训练阶段
+num_train_epochs: 34     # 对应ALUP的对比学习和主动学习微调阶段
 pretrain_batch_size: 16
 train_batch_size: 32
 eval_batch_size: 64
@@ -27,6 +27,9 @@ lr_pre: !!float 5e-5
 warmup_proportion: 0.1
 wait_patient: 20
 finish_pretrain: False 
+early_stopping_patience: 5        # 等待多少个epoch没提升就停
+early_stopping_min_delta: 0.001   # 至少提升多少才算改进
+monitor_sum_metrics: true         # 是否监控 ACC+ARI+NMI (true)，否则只看 ACC
 
 # --- ALUP 算法超参数 ---
 # 对比学习与数据增强
@@ -59,3 +62,26 @@ dataset_specific_configs:
     max_seq_length: 55
   ecdt:
     max_seq_length: 55
+  # --- Medium Length / Paragraph Datasets ---
+  stackoverflow:
+    max_seq_length: 45 # Although a large dataset, individual posts for classification are often concise.
+  AGNews:
+    max_seq_length: 128
+  Yahoo: # Yahoo Answers
+    max_seq_length: 128
+  ele:
+    max_seq_length: 200
+  DBPedia:
+    max_seq_length: 256
+  medical:
+    max_seq_length: 256
+
+  # --- Long Document Datasets ---
+  news:
+    max_seq_length: 500
+  thucnews:
+    max_seq_length: 500
+  20NG: # 20 Newsgroups
+    max_seq_length: 512
+  X-Topic:
+    max_seq_length: 512

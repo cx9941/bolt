@@ -10,15 +10,13 @@ import pandas as pd
 from transformers import AutoTokenizer
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
-max_seq_lengths = {'mcid':21, 'clinc':30, 'stackoverflow':45, 'banking':55, 'hwu': 55, 'mcid': 55, 'ecdt':55}
-
 class BaseDataNew(object):
 
     def __init__(self, args):
 
         self.data_dir = os.path.join(args.data_dir, args.dataset)
         self.logger_name = args.logger_name
-        args.max_seq_length = max_seq_lengths[args.dataset]
+        args.max_seq_length = args.max_seq_length
        
         all_label_path = os.path.join(self.data_dir, 'label', 'label.list')
         self.all_label_list = pd.read_csv(all_label_path, header=None)[0].tolist()

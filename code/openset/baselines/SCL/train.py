@@ -409,6 +409,7 @@ def main(args):
 
         #in-domain pre-training
         best_f1 = 0
+        patience_counter = 0 # <--- 新增：初始化耐心计数器
 
         if args.sup_cont:
             for epoch in range(1,args.supcont_pre_epoches+1):
@@ -493,7 +494,13 @@ def main(args):
             if f1 > best_f1:
                 torch.save(model, filepath)
                 best_f1 = f1
-            print('f1:{f1:.4f}'.format(f1=f1))
+                patience_counter = 0  # <--- 关键：性能提升，重置耐心计数器
+            else:
+                patience_counter += 1 # <--- 关键：性能未提升，耐心计数器加 1
+
+            if patience_counter >= args.patience:
+                print(f"Early stopping triggered after {args.patience} epochs with no improvement.")
+                break # <--- 关键：达到耐心极限，跳出训练循环
 
 
     if args.mode in ["test", "both", "find_threshold"]:

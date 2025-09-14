@@ -29,6 +29,9 @@ def create_parser():
     parser.add_argument("--train_batch_size", default=16, type=int)
     parser.add_argument("--eval_batch_size", default=32, type=int)
     parser.add_argument("--model_path", default=None, type=str)
+    parser.add_argument("--early_stop_patience", type=int, default=3, help="Patience for early stopping.")
+    parser.add_argument("--early_stop_delta", type=float, default=0.0, help="Minimum change to qualify as an improvement for early stopping.")
+    
     
     return parser
 

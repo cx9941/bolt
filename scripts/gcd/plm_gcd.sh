@@ -13,7 +13,8 @@ export NCCL_P2P_DISABLE="1"
 export NCCL_IB_DISABLE="1"
 
 # --- 批量实验循环 ---
-for dataset in banking
+# 使用标准的数据集列表
+for dataset in 'banking'
 do
     for seed in 0
     do
@@ -51,6 +52,7 @@ do
             echo "--- Finished run for ${dataset}, rate ${rate}, seed ${seed} ---"
         done
     done
+
 done
 
 echo "All PLM-GCD experiments have been completed."

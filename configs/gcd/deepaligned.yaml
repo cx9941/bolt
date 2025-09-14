@@ -4,7 +4,7 @@
 
 # --- 必需参数 ---
 dataset: "banking"
-known_cls_ratio: 0.75
+known_cls_ratio: 0.25
 
 # --- 常用参数 ---
 seed: 0
@@ -22,8 +22,8 @@ fold_idx: 0
 # --- 训练参数 ---
 train_batch_size: 128
 eval_batch_size: 64
-num_pretrain_epochs: 1
-num_train_epochs: 1
+num_pretrain_epochs: 100
+num_train_epochs: 100
 lr_pre: !!float 5e-5
 lr: !!float 5e-5
 warmup_proportion: 0.1
@@ -44,3 +44,33 @@ dataset_specific_configs:
     max_seq_length: 55
   hwu:
     max_seq_length: 55
+  # --- 新增补齐的配置 ---
+  # 短文本意图/问答数据集
+  mcid:
+    max_seq_length: 55
+  ecdt:
+    max_seq_length: 55
+  TREC:
+    max_seq_length: 40
+
+  # 中等长度/段落数据集
+  AGNews:
+    max_seq_length: 128
+  Yahoo: # Yahoo Answers
+    max_seq_length: 128
+  ele:
+    max_seq_length: 200
+  DBPedia:
+    max_seq_length: 256
+  medical:
+    max_seq_length: 256
+
+  # 长文档数据集
+  news:
+    max_seq_length: 500
+  thucnews:
+    max_seq_length: 500
+  20NG: # 20 Newsgroups
+    max_seq_length: 512
+  X-Topic:
+    max_seq_length: 512

@@ -83,6 +83,12 @@ def init_model():
     parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
     parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
     
-    
+    parser.add_argument("--es_patience", default=10, type=int,
+                        help="Patience (epochs) for early stopping in main training (SDC).")
+    parser.add_argument("--es_min_delta", default=0.0, type=float,
+                        help="Minimum absolute improvement to reset patience for main training.")
+    parser.add_argument("--es_metric", default="eval_acc", type=str,
+                        help="Early stopping metric for main training: eval_acc | train_loss")
+
     
     return parser

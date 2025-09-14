@@ -15,6 +15,7 @@ from utils.contrastive import *
 from utils.sinkhorn_knopp import *
 from utils.evaluate_utils import *
 from utils.kmeans import K_Means as SemiKMeans
+from scipy.optimize import linear_sum_assignment
 import torch.nn.functional as F
 from torch import nn
 import numpy as np
@@ -52,16 +53,16 @@ class CLNNModelManager:
 
         self.tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
         self.generator = view_generator(self.tokenizer, args.rtr_prob, args.seed)
-        self.feature_bank = torch.zeros(len(data.train_semi_dataset),int(args.feat_dim)).cuda()
+        self.feature_bank = torch.zeros(len(data.train_semi_dataset),int(args.feat_dim),device=self.device)
         self.centroids = None
-        self.prototype = torch.zeros(self.num_labels,int(args.feat_dim)).cuda()
+        self.prototype = torch.zeros(self.num_labels,int(args.feat_dim), device=self.device)
         cur_M = self.model.classifier_new.ori_M.T.cuda()
         self.prototype[:,:]=cur_M[:,:]
-        self.feature_bank=torch.zeros(len(data.train_semi_dataset),int(args.feat_dim)).cuda()
-        self.pesudo_bank=torch.zeros((len(data.train_semi_dataset),self.num_labels)).cuda()
+        self.feature_bank=torch.zeros(len(data.train_semi_dataset),int(args.feat_dim), device=self.device)
+        self.pesudo_bank=torch.zeros((len(data.train_semi_dataset),self.num_labels), device=self.device)
         self.chosen_bank=np.zeros(len(data.train_semi_dataset))
-        self.label_ids=torch.zeros(len(data.train_semi_dataset),dtype=torch.bool).cuda()
-        self.cluster_label_bank=torch.zeros(len(data.train_semi_dataset)).cuda()
+        self.label_ids=torch.zeros(len(data.train_semi_dataset),dtype=torch.bool, device=self.device)
+        self.cluster_label_bank=torch.zeros(len(data.train_semi_dataset), device=self.device)
         print("len(data.train_semi_dataset)",len(data.train_semi_dataset))
         self.k_top = int(5)
 
@@ -198,6 +199,14 @@ class CLNNModelManager:
         self.get_neighbor_dataset(args, data, indices)
 
         best_res_cluster=0
+        # --- Early Stopping (for CLNN) ---
+        best_score_scalar = float("-inf")
+        wait = 0
+        best_model = None  # deepcopy of the best CLNN model
+        monitor_name = getattr(args, "es_metric", "ACC")
+        min_delta = getattr(args, "es_min_delta", 0.0)
+        patience = getattr(args, "es_patience", 10)
+
         ######train
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
             self.model.train()
@@ -355,12 +364,33 @@ class CLNNModelManager:
             res_cluster=self.evaluation(args,data)
             if(res_cluster>best_res_cluster):
                 best_res_cluster=res_cluster
-            print("best_res_cluster:",best_res_cluster)            
+            print("best_res_cluster:",best_res_cluster)     
+            # --- Early Stopping check ---
+            # 当前实现中 evaluation() 返回 ACC；如果你将来想监控 NMI/ARI/H-Score，可修改 evaluation() 的返回或在此获取完整 results
+            cur_score = float(res_cluster)  # 默认监控 ACC
+            is_better = (cur_score - best_score_scalar) > min_delta
+
+            if is_better:
+                best_score_scalar = cur_score
+                wait = 0
+                # 与预训练阶段做法一致：深拷贝最优模型
+                best_model = copy.deepcopy(self.model)
+            else:
+                wait += 1
+                if wait >= patience:
+                    print(f"[EarlyStop-CLNN] No improvement on {monitor_name} for {patience} epoch(s). "
+                        f"Best {monitor_name}={best_score_scalar:.4f}. Stop training.")
+                    # 恢复到最优模型
+                    if best_model is not None:
+                        self.model = best_model
+                    break       
+
+
             # update neighbors every several epochs
             if ((epoch + 1) % args.update_per_epoch) == 0:
                 bank,indices = self.get_neighbor_inds(args, data)
                 self.get_neighbor_dataset(args, data, indices)
-
+                
     def save_features(self,args,data,epoch):
         feats_test, labels = self.get_features_labels(data.train_eval_dataloader, self.model, args)
         torch.save(feats_test,"features_{}.pt".format(epoch))

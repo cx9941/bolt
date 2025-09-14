@@ -28,6 +28,13 @@ parser.add_argument("--eval_batch_size", default=128, type=int)
 parser.add_argument("--labeled_ratio", default=0.1, type=float)
 parser.add_argument("--fold_idx", default=0, type=int)
 parser.add_argument("--fold_num", default=5, type=int)
+parser.add_argument("--es_patience", type=int, default=3,
+                    help="Early stopping patience (in eval steps or epochs when evaluation_strategy='epoch').")
+parser.add_argument("--es_min_delta", type=float, default=0.0,
+                    help="Minimum improvement to qualify as better.")
+parser.add_argument("--metric_for_best", type=str, default="accuracy",
+                    help="Metric name from compute_metrics to select best model.")
+
 
 # 2. 解析初始参数 (主要是为了获取 --config 路径)
 args = parser.parse_args()
@@ -57,7 +64,7 @@ if args.config:
         yaml_config = yaml.safe_load(f)
     apply_config_updates(args, yaml_config, parser)
     if 'dataset_specific_configs' in yaml_config:
-        dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
+        dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset_name, {})
         apply_config_updates(args, dataset_configs, parser)
 
 # 4. 基于最终的 args，完成所有依赖于参数的设置 (路径生成、环境设置等)

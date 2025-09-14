@@ -5,6 +5,7 @@ from pretrain import *
 from util import *
 import yaml
 import sys
+import math
 
 
 class ModelManager:
@@ -14,7 +15,7 @@ class ModelManager:
         if pretrained_model is None:
             pretrained_model = BertForModel.from_pretrained(args.bert_model, cache_dir = "", num_labels = data.n_known_cls)
             if os.path.exists(args.pretrain_dir):
-                pretrained_model = self.restore_model(args.pretrained_model)
+                pretrained_model = self.restore_model(args, pretrained_model)
         self.pretrained_model = pretrained_model
 
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id           
@@ -36,7 +37,9 @@ class ModelManager:
         self.model.to(self.device)
 
         num_train_examples = len(data.train_labeled_examples) + len(data.train_unlabeled_examples)
-        self.num_train_optimization_steps = int(num_train_examples / args.train_batch_size) * args.num_train_epochs
+        steps_per_epoch = max(1, math.ceil(num_train_examples / args.train_batch_size))
+        epochs = max(1, int(args.num_train_epochs))
+        self.num_train_optimization_steps = steps_per_epoch * epochs
         
         self.optimizer = self.get_optimizer(args)
 
@@ -84,6 +87,7 @@ class ModelManager:
         num_labels = len(pred_label_list) - cnt
         print('pred_num',num_labels)
 
+        num_labels = max(2, num_labels)
         return num_labels
     
     def get_optimizer(self, args):
@@ -158,8 +162,8 @@ class ModelManager:
 
     def train(self, args, data): 
 
-        best_score = 0
-        best_model = None
+        best_score = float("-inf")
+        best_model = copy.deepcopy(self.model)  # 先备份一份，保证不为 None
         wait = 0
 
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):  
@@ -178,7 +182,8 @@ class ModelManager:
             else:
                 wait += 1
                 if wait >= args.wait_patient:
-                    self.model = best_model
+                    if best_model is not None:
+                        self.model = best_model
                     break 
             
             pseudo_labels = self.alignment(km, args)
@@ -210,6 +215,8 @@ class ModelManager:
 
     def load_pretrained_model(self, args):
         pretrained_dict = self.pretrained_model.state_dict()
+        pretrained_dict = {k.replace('module.', '') if k.startswith('module.') else k: v 
+                       for k, v in pretrained_dict.items()}
         classifier_params = ['classifier.weight','classifier.bias']
         pretrained_dict =  {k: v for k, v in pretrained_dict.items() if k not in classifier_params}
         self.model.load_state_dict(pretrained_dict, strict=False)

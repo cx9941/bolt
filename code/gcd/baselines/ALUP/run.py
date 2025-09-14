@@ -59,6 +59,8 @@ def parse_arguments():
     parser.add_argument("--fold_num", type=int, default=None, help="The total number of folds for cross validation") # <--- 新增这一行
     parser.add_argument("--fold_idx", type=int, default=None, help="The index of cross validation fold")
     parser.add_argument("--gpu_id", type=int, default=None, help="Which GPU to use")
+    parser.add_argument("--max_seq_length", type=int, default=None, help="Maximum sequence length for tokenizer.")
+    parser.add_argument("--method", type=str, default="ALUP", help="Method name to log in results.")
 
     # --- 2. 路径与目录参数 ---
     parser.add_argument("--data_dir", type=str, default=None, help="The input data dir")
@@ -84,7 +86,14 @@ def parse_arguments():
     parser.add_argument("--lr_pre", type=float, default=None, help="Learning rate for pre-training.")
     parser.add_argument("--warmup_proportion", type=float, default=None, help="Proportion of training to perform linear learning rate warmup for.")
     parser.add_argument("--wait_patient", type=int, default=None, help="Patient epochs for pre-training early stopping.")
+    parser.add_argument("--early_stopping_patience", type=int, default=3,
+                    help="How many epochs with no sufficient improvement before stopping (contrastive & AL finetune).")
+    parser.add_argument("--early_stopping_min_delta", type=float, default=0.0,
+                    help="Minimum improvement (on monitored score) to reset patience.")
+    parser.add_argument("--monitor_sum_metrics", action="store_true", default=True,
+        help="If set, monitor ACC+ARI+NMI (default). Otherwise monitor ACC only.")
 
+    
     # --- 5. ALUP 算法超参数 ---
     # 对比学习与数据增强
     parser.add_argument("--cluster_num_factor", type=float, default=None, help="The factor (magnification) of the number of clusters K.")
@@ -142,6 +151,7 @@ def run():
     args.result_dir = output_dir # 用于 save_results
     args.results_file_name = 'results.csv' # 硬编码
     args.model_file_name = 'model' # 硬编码基础名称
+    args.log_dir = os.path.join(output_dir, "logs")
     
     # 检查命令行是否传入了 pretrain 的 epoch 数
     if command_args.num_pretrain_epochs is not None:

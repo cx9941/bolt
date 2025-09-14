@@ -81,5 +81,14 @@ def init_model():
     
     parser.add_argument("--output_dir", default='./outputs', type=str, 
                     help="The output directory where results and models will be written.")
-    
+    # --- Early stopping (main training) ---
+    parser.add_argument("--es_metric", type=str, default="sum", 
+                        help="Metric for early stopping: ACC|NMI|ARI|H-Score|sum (sum=ACC+NMI+ARI+H-Score)")
+    parser.add_argument("--es_patience", type=int, default=10, 
+                        help="Early stopping patience in epochs for main training.")
+    parser.add_argument("--es_min_delta", type=float, default=0.0, 
+                        help="Minimal improvement to reset patience.")
+    parser.add_argument("--save_best", action="store_true", 
+                        help="Save best checkpoint during main training.")
+
     return parser

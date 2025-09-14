@@ -4,7 +4,7 @@
 
 # --- 必需参数 ---
 dataset: "banking"
-known_cls_ratio: 0.1
+known_cls_ratio: 0.25
 
 # --- 常用参数 ---
 seed: 42
@@ -19,8 +19,8 @@ experiment_name: "deepseek-v3:671b"
 running_method: "GCDLLMs"
 
 # --- 训练与流程控制 ---
-num_pretrain_epochs: 5
-num_train_epochs: 2
+num_pretrain_epochs: 50
+num_train_epochs: 20
 lr_pre: !!float 5e-5
 lr: !!float 1e-5
 pretrain_batch_size: 48
@@ -29,6 +29,9 @@ eval_batch_size: 64
 warmup_proportion: 0.1
 wait_patient: 20
 grad_clip: 1.0
+es_metric: "Acc"        # 可选: Acc | NMI | ARI | H-Score
+es_patience: 5          # 连续 8 个 epoch 无显著提升就停
+es_min_delta: 0.5       # 至少提升 0.2 才算“更好”
 
 # --- 数据集与标签设置 ---
 label_setting: "ratio"
@@ -53,7 +56,7 @@ ce_weight: 1.0
 cl_weight: 1.0
 sup_weight: 1.0
 weight_ce_unsup: 0.0
-weight_cluster_instance_cl: 0.1
+weight_cluster_instance_cl: 0.0
 
 # --- LLM 与 Prompt 相关参数 ---
 api_key: "6c5c96209c4ef126a87fbe9840fab7c346b4c6fb6a57529fce7dea01c683fd1b" # 建议从环境变量或安全方式读取
@@ -77,6 +80,7 @@ component_ablation: "full"
 
 # --- 【新增】数据集专属配置 ---
 dataset_specific_configs:
+  # --- 任务类型: "intent" (意图分类) ---
   clinc:
     max_seq_length: 30
     topk: 50
@@ -89,3 +93,59 @@ dataset_specific_configs:
     max_seq_length: 55
     topk: 50
     task: "intent"
+  hwu:
+    max_seq_length: 55
+    topk: 55
+    task: "intent"
+  mcid:
+    max_seq_length: 55
+    topk: 55
+    task: "intent"
+  ecdt:
+    max_seq_length: 55
+    topk: 55
+    task: "intent"
+
+  # --- 任务类型: "question" (问题分类) ---
+  TREC:
+    max_seq_length: 40
+    topk: 50
+    task: "question"
+  Yahoo: # Yahoo Answers
+    max_seq_length: 128
+    topk: 200
+    task: "question"
+  
+  # --- 任务类型: "topic" (主题分类) ---
+  AGNews:
+    max_seq_length: 128
+    topk: 200
+    task: "topic"
+  DBPedia:
+    max_seq_length: 256
+    topk: 200
+    task: "topic"
+  medical:
+    max_seq_length: 256
+    topk: 200
+    task: "topic"
+  ele:
+    max_seq_length: 200
+    topk: 500
+    task: "topic"
+  news:
+    max_seq_length: 500
+    topk: 500
+    task: "topic"
+  thucnews:
+    max_seq_length: 500
+    topk: 500
+    task: "topic"
+  20NG: # 20 Newsgroups
+    max_seq_length: 512
+    topk: 500
+    task: "topic"
+  X-Topic:
+    max_seq_length: 512
+    topk: 500
+    task: "topic"

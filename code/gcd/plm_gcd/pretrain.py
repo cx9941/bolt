@@ -20,7 +20,6 @@ import pandas as pd
 from transformers import BertForSequenceClassification, AutoModelForSequenceClassification
 from load_dataset import train_dataset, dataset_in_test, collate_batch, dataset_in_eval, tokenizer
 import logging
-from sklearn.metrics import classification_report
 import numpy as np
 from peft import get_peft_model, LoraConfig, TaskType
 from transformers import BitsAndBytesConfig, Trainer
@@ -28,7 +27,8 @@ from transformers import BitsAndBytesConfig, Trainer
 def compute_metrics(eval_predictions):
     preds, golds = eval_predictions
     preds = np.argmax(preds, axis=1)
-    metrics = classification_report(preds, golds, output_dict=True)
+    # metrics = classification_report(preds, golds, output_dict=True)
+    metrics = classification_report(golds, preds, output_dict=True)
     metrics['macro avg'].update({'accuracy': metrics['accuracy']})
     return metrics['macro avg']
 
@@ -48,7 +48,7 @@ model = get_peft_model(base_model, peft_config)
 model.config.pad_token_id = tokenizer.pad_token_id
 model.config.eos_token_id = tokenizer.eos_token_id
 
-from transformers import TrainingArguments
+from transformers import TrainingArguments, EarlyStoppingCallback
 
 # 设置训练参数
 training_args = TrainingArguments(
@@ -62,7 +62,10 @@ training_args = TrainingArguments(
     num_train_epochs=args.n_epochs,              # 训练周期
     weight_decay=0.01,               # 权重衰减
     save_strategy='epoch',
-    save_total_limit=1,
+    save_total_limit=3,
+    load_best_model_at_end=True,
+    metric_for_best_model=args.metric_for_best,  # 例如 "accuracy"
+    greater_is_better=True,             # 用 accuracy 时应为 True
 )
 # 设置训练参数
 training_args = TrainingArguments(
@@ -77,6 +80,10 @@ training_args = TrainingArguments(
     save_total_limit=1,
 )
 
+callbacks = [EarlyStoppingCallback(
+    early_stopping_patience=args.es_patience,
+    early_stopping_threshold=args.es_min_delta
+)]
 
 trainer = Trainer(
     model=model,
@@ -85,7 +92,8 @@ trainer = Trainer(
     train_dataset=train_dataset,
     eval_dataset=dataset_in_eval,
     compute_metrics=compute_metrics,
-    data_collator=collate_batch
+    data_collator=collate_batch,
+    callbacks=callbacks
 )
 results = trainer.evaluate()
 logging.info("initial\n", results)

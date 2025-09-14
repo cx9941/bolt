@@ -184,4 +184,12 @@ def init_model():
     parser.add_argument("--pretrain_dir", default='outputs/pretrain', type=str, 
                         help="The output directory for pre-trained models.")
 
+    parser.add_argument("--es_metric", type=str, default="NMI",
+                    help="Early stopping metric during main training: Acc|NMI|ARI|H-Score")
+    parser.add_argument("--es_patience", type=int, default=5,
+                        help="Patience (epochs) for early stopping during main training.")
+    parser.add_argument("--es_min_delta", type=float, default=0.0,
+                        help="Minimum improvement required to reset patience during main training.")
+
+    
     return parser

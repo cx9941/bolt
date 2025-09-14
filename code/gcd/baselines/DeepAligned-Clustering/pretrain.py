@@ -1,6 +1,8 @@
 from util import *
 from model import *
 from dataloader import *
+import math
+
 
 class PretrainModelManager:
     
@@ -17,8 +19,10 @@ class PretrainModelManager:
         if n_gpu > 1:
             self.model = torch.nn.DataParallel(self.model)
         
-        self.num_train_optimization_steps = int(len(data.train_labeled_examples) / args.train_batch_size) * args.num_train_epochs
-        
+        steps_per_epoch = max(1, math.ceil(len(data.train_labeled_examples) / args.train_batch_size))
+        epochs = max(1, int(args.num_pretrain_epochs))
+        self.num_train_optimization_steps = steps_per_epoch * epochs
+
         self.optimizer = self.get_optimizer(args)
         
         self.best_eval_score = 0
@@ -48,8 +52,9 @@ class PretrainModelManager:
     def train(self, args, data):  
  
         wait = 0
-        best_model = None
-        for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
+        best_model = copy.deepcopy(self.model)
+        self.best_eval_score = float("-inf")
+        for epoch in trange(int(args.num_pretrain_epochs), desc="Epoch"):
             self.model.train()
             tr_loss = 0
             nb_tr_examples, nb_tr_steps = 0, 0

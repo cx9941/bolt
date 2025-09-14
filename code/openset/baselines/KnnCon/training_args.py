@@ -444,6 +444,10 @@ class TrainingArguments:
     contrastive_rate_in_training: float = field(default=0.1)
     contrastive_rate_in_inference: float = field(default=0.1)
 
+    early_stopping_patience: int = field(default=3, metadata={"help": "Early stopping patience (in eval steps or epochs depending on evaluation_strategy)."})
+    early_stopping_threshold: float = field(default=0.0, metadata={"help": "Minimum improvement to qualify as better; <= threshold is not an improvement."})
+    
+
     def __post_init__(self):
         if self.disable_tqdm is None:
             self.disable_tqdm = logger.getEffectiveLevel() > logging.WARN

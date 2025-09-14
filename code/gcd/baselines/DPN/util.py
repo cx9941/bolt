@@ -13,35 +13,45 @@ def hungray_aligment(y_true, y_pred):
 
 def clustering_accuracy_score(y_true, y_pred, known_lab):
     ind, w = hungray_aligment(y_true, y_pred)
-    acc = sum([w[i, j] for i, j in ind]) / y_pred.size
+    acc = sum(w[i, j] for i, j in ind) / y_pred.size
     ind_map = {j: i for i, j in ind}
-    
-    old_acc = 0
-    total_old_instances = 0
-    for i in known_lab:
-        old_acc += w[ind_map[i], i]
-        total_old_instances += sum(w[:, i])
-    old_acc /= total_old_instances
-    
-    new_acc = 0
-    total_new_instances = 0
-    for i in range(len(np.unique(y_true))):
-        if i not in known_lab:
-            new_acc += w[ind_map[i], i]
-            total_new_instances += sum(w[:, i])
-    new_acc /= total_new_instances
-    
-    # 计算调和平均分数
-    h_score = 2*old_acc*new_acc / (old_acc + new_acc)
-    
+
+    unique_true = np.unique(y_true)
+
+    # ---- 已知类准确率（分母为0时置0，避免除零）----
+    old_correct = 0.0
+    old_total = 0.0
+    for cls in unique_true:
+        if cls in known_lab:
+            col_sum = float(np.sum(w[:, cls]))
+            if col_sum > 0 and cls in ind_map:
+                old_correct += w[ind_map[cls], cls]
+                old_total += col_sum
+    old_acc = (old_correct / old_total) if old_total > 0 else 0.0
+
+    # ---- 新类准确率（分母为0时置0，避免除零）----
+    new_correct = 0.0
+    new_total = 0.0
+    for cls in unique_true:
+        if cls not in known_lab:
+            col_sum = float(np.sum(w[:, cls]))
+            if col_sum > 0 and cls in ind_map:
+                new_correct += w[ind_map[cls], cls]
+                new_total += col_sum
+    new_acc = (new_correct / new_total) if new_total > 0 else 0.0
+
+    # ---- 调和平均（分母为0时置0，避免除零）----
+    h_denom = (old_acc + new_acc)
+    h_score = (2 * old_acc * new_acc / h_denom) if h_denom > 0 else 0.0
+
     metrics = {
-        'ACC': round(acc*100, 2),
-        'H-Score': round(h_score*100, 2),
-        'K-ACC': round(old_acc*100, 2),
-        'N-ACC': round(new_acc*100, 2),
+        'ACC': round(acc * 100, 2),
+        'H-Score': round(h_score * 100, 2),
+        'K-ACC': round(old_acc * 100, 2),
+        'N-ACC': round(new_acc * 100, 2),
     }
-    
     return metrics
+
 
 def clustering_score(y_true, y_pred, known_lab):
     # 获取基础的4个指标

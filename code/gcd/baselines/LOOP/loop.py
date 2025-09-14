@@ -104,7 +104,7 @@ class LoopModelManager:
         # save results
         if save_results:
             self.save_results(args)
-
+        return results
         # # Save results and features
         # if save_results:
         #     dir_name = f"{args.save_results_path}/{args.dataset}_{args.known_cls_ratio}_{args.labeled_ratio}"
@@ -135,6 +135,13 @@ class LoopModelManager:
         self.get_neighbor_dataset(args, data, indices, query_index, km.labels_)
         labelediter = iter(data.train_labeled_dataloader)
 
+        best_model = copy.deepcopy(self.model)
+        best_score = float("-inf")
+        wait = 0
+        metric_name = getattr(args, "es_metric", "NMI")
+        es_patience = getattr(args, "es_patience", 5)
+        es_min_delta = getattr(args, "es_min_delta", 0.0)
+        
         for epoch in range(int(args.num_train_epochs)):
             self.model.train()
             tr_loss = 0
@@ -193,6 +200,23 @@ class LoopModelManager:
             loss = tr_loss / nb_tr_steps
             print('train_loss',loss)
             self.dataset.count = 0
+
+            # === 早停评估（每个 epoch 结束评估一次）===
+            results = self.evaluation(args, data, save_results=False, plot_cm=False)
+            score = results.get(metric_name, None)
+            if score is None:
+                # 兜底：若用户填了未知指标名，默认用 NMI
+                score = results["NMI"]
+            if score > best_score + es_min_delta:
+                best_score = score
+                best_model = copy.deepcopy(self.model)
+                wait = 0
+                # 可选：也可以在此处落盘一个 "model_epoch_best.pt"
+            else:
+                wait += 1
+                if wait >= es_patience:
+                    print(f"Early stopping triggered on metric {metric_name}. Best={best_score:.2f}")
+                    break
                         
             # update neighbors every several epochs
             if ((epoch + 1) % args.update_per_epoch) == 0 and ((epoch + 1) != int(args.num_train_epochs)):

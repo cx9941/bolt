@@ -9,8 +9,6 @@ import os
 import random
 import numpy as np
 
-max_seq_lengths = {'mcid':21, 'clinc':30, 'stackoverflow':45, 'banking':55, 'hwu': 55, 'mcid': 55, 'ecdt':55}
-
 class NIDDataset(Dataset):
 
     def __init__(self, examples_dict_list):
@@ -27,7 +25,7 @@ class NIDData:
     def __init__(self, args, data, tokenizer):
         
         self.logger = logging.getLogger(args.logger_name)
-        self.max_seq_len = max_seq_lengths[args.dataset]
+        self.max_seq_len = args.max_seq_length
         self.tokenizer = tokenizer
 
         self.all_label_list = data.all_label_list

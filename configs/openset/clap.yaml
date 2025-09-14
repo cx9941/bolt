@@ -9,7 +9,7 @@ gpu_id: "0"
 dataset: "banking"
 data_dir: "./data"
 known_cls_ratio: 0.25
-labeled_ratio: 1.0
+labeled_ratio: 0.1
 fold_idx: 0
 fold_num: 5
 max_seq_length: 128
@@ -50,7 +50,7 @@ boundary_adjustment:
   # 注意：pretrain_dir 会被 .sh 脚本动态覆盖，这里的值仅作参考
   # pretrain_dir: "./outputs/openset/clap/finetuned_model" 
   lr_boundary: 0.05
-  num_train_epochs: 1.0
+  num_train_epochs: 100.0
   train_batch_size: 64
   eval_batch_size: 256
   wait_patient: 10

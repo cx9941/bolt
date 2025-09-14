@@ -72,7 +72,7 @@ class CLBert(nn.Module):
         outputs = self.backbone(**X, output_hidden_states=True, output_attentions=True)
         cls_embed = outputs.hidden_states[-1][:,0]
         pooled_output=self.head(cls_embed)
-        cur_M = self.classifier_new.ori_M.cuda()
+        cur_M = self.classifier_new.ori_M.to(self.device)
         feat_norm = self.classifier_new(pooled_output)
         output_dir = {"features": feat_norm}
         logit = torch.matmul(feat_norm, cur_M)

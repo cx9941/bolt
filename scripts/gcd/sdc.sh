@@ -4,11 +4,10 @@ set -o errexit
 # ===================================================================
 # BOLT Platform: SDC 算法启动脚本 (最终重构版)
 # ===================================================================
-
 # --- 1. 基础配置 ---
 CONFIG_FILE="configs/gcd/sdc.yaml" 
 GPU_ID="0"
-# export CUDA_VISIBLE_DEVICES=$GPU_ID # 防止自动分配到不同卡
+export CUDA_VISIBLE_DEVICES=$GPU_ID # 防止自动分配到不同卡
 export OPENBLAS_NUM_THREADS=32
 export TF_CPP_MIN_LOG_LEVEL=2   # 忽略tf框架的输出
 

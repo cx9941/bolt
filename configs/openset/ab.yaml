@@ -9,7 +9,7 @@ gpu_id: "0"
 dataset: "banking"
 data_dir: "./data"
 known_cls_ratio: 0.25
-labeled_ratio: 1.0
+labeled_ratio: 0.1
 fold_idx: 0
 fold_num: 5
 

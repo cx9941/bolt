@@ -45,7 +45,8 @@ def run_pretraining(args):
     def compute_metrics(eval_predictions):
         preds, golds = eval_predictions
         preds = np.argmax(preds, axis=1)
-        metrics = classification_report(preds, golds, output_dict=True)
+        # metrics = classification_report(preds, golds, output_dict=True)
+        metrics = classification_report(golds, preds, output_dict=True)
         metrics['macro avg'].update({'accuracy': metrics['accuracy']})
         return metrics['macro avg']
 
@@ -57,7 +58,6 @@ def run_pretraining(args):
         lora_dropout=0.1,
         target_modules=["query", "key", "value"] if 'bert' in args.model_path else ["q_proj", "v_proj"]
     )
-    data = load_and_prepare_datasets(args)
     tokenizer = data['tokenizer']
     base_model = create_model(model_path=args.model_path, num_labels=args.num_labels, tokenizer=tokenizer)
     model = get_peft_model(base_model, peft_config)

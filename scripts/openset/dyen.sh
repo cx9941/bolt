@@ -1,7 +1,14 @@
 #!/bin/bash
-
-# 如果任何命令执行失败，立即退出脚本
 set -o errexit
+
+# ===================================================================
+# DyEn 算法启动脚本（精简日志版）
+# ===================================================================
+
+# --- 0. 日志文件配置 ---
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
+LOG_FILE="${SCRIPT_DIR}/dyen_times.log"
+echo "--- DyEn Experiment Timings Started at $(date) ---" >> "$LOG_FILE"
 
 # --- 脚本基础设置 ---
 GPU_ID="3"
@@ -10,26 +17,34 @@ CONFIG_FILE="configs/openset/dyen.yaml"
 # --- 批量实验循环 ---
 for dataset in banking
 do
-    for seed in 0
+  for seed in 0
+  do
+    dataset_start_time=$(date +%s)
+
+    for ratio in 0.25  # 在 YAML 中这个参数叫 known_cls_ratio
     do
-        for ratio in 0.25 # 在YAML中这个参数叫 known_cls_ratio
-        do
-            echo "===================================================="
-            echo "Running DyEn -> Dataset: ${dataset}, Seed: ${seed}, Known Ratio: ${ratio}"
-            echo "===================================================="
+      echo "===================================================="
+      echo "Running DyEn -> Dataset: ${dataset}, Seed: ${seed}, Known Ratio: ${ratio}"
+      echo "===================================================="
 
-            # 废弃 parse_yaml.py，直接调用主程序并传入高优先级参数
-            python code/openset/baselines/DyEn/run_main.py \
-                --config ${CONFIG_FILE} \
-                --dataset ${dataset} \
-                --seed ${seed} \
-                --known_cls_ratio ${ratio} \
-                --gpu_id ${GPU_ID} \
-                --output_dir ./outputs/openset/dyen/${dataset}_${ratio}_${seed} # 动态生成输出目录，避免覆盖
-
-            echo "Finished run for Dataset: ${dataset}, Seed: ${seed}, Known Ratio: ${ratio}"
-        done
+      python code/openset/baselines/DyEn/run_main.py \
+        --config "${CONFIG_FILE}" \
+        --dataset "${dataset}" \
+        --seed "${seed}" \
+        --known_cls_ratio "${ratio}" \
+        --gpu_id "${GPU_ID}" \
+        --output_dir "./outputs/openset/dyen/${dataset}_${ratio}_${seed}"
     done
+
+    dataset_end_time=$(date +%s)
+    duration=$((dataset_end_time - dataset_start_time))
+    minutes=$((duration / 60))
+    seconds=$((duration % 60))
+
+    echo "Dataset '${dataset}' finished in ${minutes}m ${seconds}s. (Total: ${duration}s)" | tee -a "$LOG_FILE"
+    echo ""
+  done
 done
 
 echo "All DyEn experiments have been completed."
+echo "Timing summary available in ${LOG_FILE}"

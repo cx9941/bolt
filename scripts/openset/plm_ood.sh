@@ -12,7 +12,7 @@ RUN_STAGE_2=true   # 阶段2: 执行OOD训练 (train_ood.py)
 
 # --- 2. 基础配置 ---
 # 基础模板配置文件，命令行中的参数将覆盖这里面的值
-CONFIG_FILE="configs/openset/plm_ood.yaml" 
+CONFIG_FILE="configs/openset/plm_ood.yaml"
 GPU_ID="0"
 export CUDA_VISIBLE_DEVICES=$GPU_ID # 防止自动分配到不同卡
 
@@ -21,46 +21,45 @@ for reg_loss in 'normal'
 do
 for seed in 0
 do
+# 使用标准的数据集列表
 for dataset_name in 'banking'
 do
-for rate in 0.25
-do
-    echo "========================================================================"
-    echo "Running with: dataset=$dataset_name, rate=$rate, seed=$seed, reg_loss=$reg_loss"
-    echo "========================================================================"
+    for rate in 0.25
+    do
+        echo "========================================================================"
+        echo "Running with: dataset=$dataset_name, rate=$rate, seed=$seed, reg_loss=$reg_loss"
+        echo "========================================================================"
 
-    # --- 4. 执行区 (根据控制面板选择执行) ---
-    
-    # 阶段 1: 预训练
-    if [ "$RUN_STAGE_1" = true ]; then
-        echo "--- Stage 1: Running Pre-training ---"
-        python code/openset/plm_ood/pretrain.py \
-            --config $CONFIG_FILE \
-            --dataset_name $dataset_name \
-            --rate $rate \
-            --seed $seed \
-            --reg_loss $reg_loss
-        echo "--- Stage 1 finished. ---"
-    else
-        echo "--- Stage 1: Skipped. ---"
-    fi
+        # 阶段 1: 预训练
+        if [ "$RUN_STAGE_1" = true ]; then
+            echo "--- Stage 1: Running Pre-training ---"
+            python code/openset/plm_ood/pretrain.py \
+                --config $CONFIG_FILE \
+                --dataset_name $dataset_name \
+                --rate $rate \
+                --seed $seed \
+                --reg_loss $reg_loss
+            echo "--- Stage 1 finished. ---"
+        else
+            echo "--- Stage 1: Skipped. ---"
+        fi
 
-    # 阶段 2: OOD 训练
-    if [ "$RUN_STAGE_2" = true ]; then
-        echo "--- Stage 2: Running OOD Training ---"
-        python code/openset/plm_ood/train_ood.py \
-            --config $CONFIG_FILE \
-            --dataset_name $dataset_name \
-            --rate $rate \
-            --seed $seed \
-            --reg_loss $reg_loss
-        echo "--- Stage 2 finished. ---"
-    else
-        echo "--- Stage 2: Skipped. ---"
-    fi
+        # 阶段 2: OOD 训练
+        if [ "$RUN_STAGE_2" = true ]; then
+            echo "--- Stage 2: Running OOD Training ---"
+            python code/openset/plm_ood/train_ood.py \
+                --config $CONFIG_FILE \
+                --dataset_name $dataset_name \
+                --rate $rate \
+                --seed $seed \
+                --reg_loss $reg_loss
+            echo "--- Stage 2 finished. ---"
+        else
+            echo "--- Stage 2: Skipped. ---"
+        fi
 
-done
-done
+    done
+done # dataset_name 循环结束
 done
 done
 

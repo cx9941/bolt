@@ -27,6 +27,7 @@ import sys
 # import fitlog
 from dataclasses import dataclass, field
 from sklearn.metrics import matthews_corrcoef
+from sklearn.metrics import accuracy_score, f1_score
 from typing import Optional
 
 import numpy as np
@@ -56,6 +57,7 @@ from model import (
     ContrastiveMoCoKnnBert
 )
 from transformers.trainer_utils import is_main_process
+from transformers import EarlyStoppingCallback
 
 from transformers import AutoModelForSequenceClassification
 import torch
@@ -213,6 +215,13 @@ def data_collator(features):
 
     return batch
 
+def compute_metrics(p: EvalPrediction):
+    """一个简单的评估函数，计算准确率和宏平均F1分数。"""
+    preds = np.argmax(p.predictions, axis=1)
+    return {
+        'accuracy': accuracy_score(p.label_ids, preds),
+        'f1': f1_score(p.label_ids, preds, average='macro'),
+    }
 
 def main():
     # See all possible arguments in src/transformers/training_args.py
@@ -492,17 +501,27 @@ def main():
 
     # Initialize our Trainer
     training_args.num_labels = config.num_labels
+
+    if not hasattr(training_args, 'early_stopping_patience'):
+        setattr(training_args, 'early_stopping_patience', 3) # 提供一个默认值
+
+    # 创建早停回调实例
+    early_stopping_callback = EarlyStoppingCallback(
+        early_stopping_patience=training_args.early_stopping_patience,
+        early_stopping_threshold=training_args.early_stopping_threshold,
+    )
     trainer = SimpleTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         test_dataset=test_dataset if training_args.do_predict else None,
-        compute_metrics=None,
+        compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         number_labels=num_labels,
         # Data collator will default to DataCollatorWithPadding, so we change it if we already did the padding.
-        data_collator=data_collator
+        data_collator=data_collator,
+        callbacks=[early_stopping_callback]
     )
 
     # Training

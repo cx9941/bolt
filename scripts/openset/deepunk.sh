@@ -1,32 +1,37 @@
 #!/bin/bash
-
-# 如果任何命令执行失败，立即退出脚本
 set -o errexit
+
+# ===================================================================
+# DeepUnk 算法启动脚本（精简日志版）
+# ===================================================================
 
 # --- 脚本基础设置 ---
 GPU_ID="0"
 CONFIG_FILE="configs/openset/deepunk.yaml"
+DATASET="banking"   # 当前写死为 banking，如需多数据集可改 for dataset in ...
 
 # --- 批量实验循环 ---
 for seed in 0
 do
-    for ratio in 0.25
-    do
-        echo "===================================================="
-        echo "Running DeepUnk -> Seed: ${seed}, Known Ratio: ${ratio}"
-        echo "===================================================="
+for dataset_name in 'banking'
+do
 
-        # --- 改造核心 ---
-        # 废弃 parse_yaml.py，直接调用主程序并传入高优先级参数
-        python code/openset/baselines/DeepUnk/experiment.py \
-            --config ${CONFIG_FILE} \
-            --seed ${seed} \
-            --known_cls_ratio ${ratio} \
-            --gpu_id ${GPU_ID} \
-            --output_dir ./outputs/openset/deepunk/banking_${ratio}_${seed} # 动态生成输出目录
-        
-        echo "Finished run for Seed: ${seed}, Known Ratio: ${ratio}"
-    done
+  for ratio in 0.25
+  do
+    echo "===================================================="
+    echo "Running DeepUnk -> Dataset: ${DATASET}, Seed: ${seed}, Known Ratio: ${ratio}"
+    echo "===================================================="
+
+    python code/openset/baselines/DeepUnk/experiment.py \
+      --config "${CONFIG_FILE}" \
+      --dataset "${dataset_name}" \
+      --seed "${seed}" \
+      --known_cls_ratio "${ratio}" \
+      --gpu_id "${GPU_ID}" \
+      --output_dir "./outputs/openset/deepunk/${DATASET}_${ratio}_${seed}"
+  done
+
+done
 done
 
 echo "All DeepUnk experiments have been completed."

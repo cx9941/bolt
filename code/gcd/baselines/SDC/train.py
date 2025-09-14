@@ -40,7 +40,7 @@ class Manager:
         # self.evaluation(data)
         self.initialize_classifier(args, data)
         self.freeze_parameters(self.model)
-        self.num_train_optimization_steps = int(len(data.train_labeled_examples) / args.train_batch_size) * args.num_pretrain_epochs
+        self.num_train_optimization_steps = int(len(data.train_labeled_examples) / args.train_batch_size) * args.num_train_epochs
         self.optimizer, self.scheduler = self.get_optimizer(args)
 
         
@@ -51,6 +51,12 @@ class Manager:
     def train(self, args, data):
 
         unlabeled_iter = iter(data.train_semi_dataloader)
+
+        # === (A) 早停相关变量初始化 ===
+        wait = 0
+        best_model = None
+        best_score = -float("inf")
+        best_train_loss = float("inf")
 
         for epoch in range(int(args.num_train_epochs)):
 
@@ -64,6 +70,10 @@ class Manager:
 
             factor = self.exponential_decay(epoch, 0.4, 80, 0.3)
             threshold = self.exponential_decay(epoch, 0.3, 80, 0.4)
+
+            # === 新增：统计本 epoch 的训练损失（供 train_loss 早停用）===
+            tr_loss = 0.0
+            nb_tr_steps = 0
 
             for batch in tqdm(data.train_labeled_dataloader, desc="Pseudo-label training"):
 
@@ -107,15 +117,11 @@ class Manager:
                     labels_u1 = self.sinkhorn(logits_u2)
                     labels_u2 = self.sinkhorn(logits_u1)
 
-
                 hard_novel_idx1 = self.split_hard_novel_soft_seen(data, labels_u1, threshold)
                 hard_novel_idx2 = self.split_hard_novel_soft_seen(data, labels_u2, threshold)
 
-
                 self.gen_hard_novel(labels_u1, hard_novel_idx1, threshold)
                 self.gen_hard_novel(labels_u2, hard_novel_idx2, threshold)
- 
-
 
                 X_u = {"input_ids": torch.cat([X_u1["input_ids"], X_u2["input_ids"]], dim=0), 
                        "attention_mask": torch.cat([X_u1["attention_mask"], X_u2["attention_mask"]], dim=0),
@@ -130,20 +136,15 @@ class Manager:
                     contrastive_feats = torch.cat((feats_l.unsqueeze(1), feats_l2.unsqueeze(1)), dim = 1)
 
                 feats_u, logits_u = self.model(X_u)
-                
-
 
                 feats_u1 = feats_u[:len(labels_u1), :]
                 feats_u2 = feats_u[len(labels_u1):, :]
-                
 
                 logits_l = F.normalize(logits_l, dim=1)
                 logits_u = F.normalize(logits_u, dim=1)
-                
+
                 feats_u1 = F.normalize(feats_u1, dim=1)
                 feats_u2 = F.normalize(feats_u2, dim=1)
-
-                # a weird bug to reproduce the results for banking
 
                 loss_cel = -torch.mean(torch.sum(labels * F.log_softmax((logits_l/0.3), dim=1), dim=1))
                 loss_ceu = -torch.mean(torch.sum(labels_u * F.log_softmax((logits_u/0.3), dim=1), dim=1))
@@ -159,6 +160,42 @@ class Manager:
                 self.optimizer.step()
                 self.scheduler.step()
                 self.optimizer.zero_grad()
+
+                # === 累计训练损失 ===
+                tr_loss += loss.item()
+                nb_tr_steps += 1
+
+            # === (B) 每个 epoch 结束：计算监控指标并做早停判定 ===
+            mean_train_loss = tr_loss / max(1, nb_tr_steps)
+            if args.es_metric == "train_loss":
+                monitor = -mean_train_loss  # 换成“越大越好”的方向
+                improved = (monitor - best_score) > args.es_min_delta
+                if improved:
+                    best_score = monitor
+                    best_model = copy.deepcopy(self.model)
+                    wait = 0
+                else:
+                    wait += 1
+            else:
+                # 默认：用验证集准确率做早停
+                eval_acc = self.eval_seen_acc(data)
+                print(f"[EarlyStop] epoch={epoch}  train_loss={mean_train_loss:.4f}  eval_acc={eval_acc:.2f}")
+                monitor = eval_acc
+                improved = (monitor - best_score) > args.es_min_delta
+                if improved:
+                    best_score = monitor
+                    best_model = copy.deepcopy(self.model)
+                    wait = 0
+                else:
+                    wait += 1
+
+            if wait >= args.es_patience:
+                print(f"Early stopping triggered at epoch {epoch}. Best score={best_score:.4f}")
+                break
+
+        # 使用最佳模型继续后续流程（保存 / 评估）
+        if best_model is not None:
+            self.model = best_model
 
         if args.save_model:
             self.save_model(args)
@@ -281,6 +318,27 @@ class Manager:
         classifier_params = ['classifier.weight', 'classifier.bias']
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k not in classifier_params}
         self.model.load_state_dict(pretrained_dict, strict=False)
+    def eval_seen_acc(self, data):
+        """Evaluate accuracy on the eval set (known classes only)."""
+        self.model.eval()
+        total_labels = torch.empty(0, dtype=torch.long).to(self.device)
+        total_logits = torch.empty((0, data.num_labels)).to(self.device)
+
+        for batch in data.eval_dataloader:
+            batch = tuple(t.to(self.device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids = batch
+            X = {"input_ids": input_ids, "attention_mask": input_mask, "token_type_ids": segment_ids}
+            with torch.no_grad():
+                _, logits = self.model(X)
+                total_labels = torch.cat((total_labels, label_ids))
+                total_logits = torch.cat((total_logits, logits))
+
+        # 直接在全部类别上取 argmax；若预测到新类会被判错（符合预期）
+        _, total_preds = torch.softmax(total_logits, dim=1).max(dim=1)
+        y_true = total_labels.cpu().numpy()
+        y_pred = total_preds.cpu().numpy()
+        acc = round(accuracy_score(y_true, y_pred) * 100, 2)
+        return acc
 
     def evaluation(self, data, tag='pretrain'):
         self.model.eval()
@@ -354,29 +412,38 @@ class Manager:
         if not os.path.exists(args.save_results_path):
             os.makedirs(args.save_results_path)
 
-        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed, self.num_labels]
-        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor','seed', 'K']
-        vars_dict = {k:v for k,v in zip(names, var) }
+        # 记录基础字段 + 评测结果
+        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio,
+            args.cluster_num_factor, args.seed, self.num_labels]
+        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio',
+                'cluster_num_factor', 'seed', 'K']
+        vars_dict = {k: v for k, v in zip(names, var)}
         results = dict(self.test_results, **vars_dict)
-        keys = list(results.keys())
-        values = list(results.values())
-        
-        file_name = 'results.csv'
-        results_path = os.path.join(args.save_results_path, file_name)
-        
-        if not os.path.exists(results_path):
-            ori = []
-            ori.append(values)
-            df1 = pd.DataFrame(ori,columns = keys)
-            df1.to_csv(results_path,index=False)
+
+        # 增加 run_time 便于追溯（可选）
+        results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        results_path = os.path.join(args.save_results_path, 'results.csv')
+        record = pd.DataFrame([results])
+
+        if os.path.exists(results_path):
+            df = pd.read_csv(results_path)
+            df = pd.concat([df, record], ignore_index=True)
+
+            # 主键去重：同一次设置只保留最后一次（keep='last'）
+            dedup_keys = [
+                'dataset', 'method', 'ablation',
+                'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor',
+                'seed', 'K'
+            ]
+            # 只有在 ablation 字段存在时去重（避免旧文件缺列报错）
+            if all(k in df.columns for k in dedup_keys):
+                df.drop_duplicates(subset=dedup_keys, keep='last', inplace=True)
         else:
-            df1 = pd.read_csv(results_path)
-            new = pd.DataFrame(results,index=[1])
-            df1 = df1._append(new,ignore_index=True)
-            df1.to_csv(results_path,index=False)
-        data_diagram = pd.read_csv(results_path)
-        
-        print('test_results', data_diagram)
+            df = record
+
+        df.to_csv(results_path, index=False)
+        print('test_results', pd.read_csv(results_path))
 
 def apply_config_updates(args, config_dict, parser):
         """
@@ -421,6 +488,7 @@ if __name__ == '__main__':
     args.bert_model = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
     args.tokenizer = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
 
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id).strip()
     data = Data(args)
     args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
     args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')

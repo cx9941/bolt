@@ -173,6 +173,14 @@ class ModelManager:
         train_dataloader = DataLoader(train_data, sampler = train_sampler, batch_size = args.train_batch_size)
         return train_dataloader
 
+    def quick_eval(self, args, dataloader, known_lab):
+        self.model.eval()
+        feats, labels = self.get_features_labels(dataloader, self.model, args)
+        feats = feats.cpu().numpy()
+        km = KMeans(n_clusters=self.num_labels, n_init=20).fit(feats)
+        y_true = labels.cpu().numpy()
+        return clustering_score(y_true, km.labels_, known_lab)
+
     def train(self, args, data):    
         feats_label, labels = self.get_features_labels(data.train_labeled_dataloader, self.model, args)
         feats_label = feats_label.cpu().numpy()
@@ -255,9 +263,9 @@ class ModelManager:
                 loss_u = (cost_mat * s_dist).sum(1).mean()
 
                 mask = torch.where(label_ids < len(self.proto_l), 1, 0).reshape((-1,1))
-                sim_mat = self.pairwise_cosine_sim(pooled, torch.tensor(self.proto_l).float().cuda()) / args.temperature
+                sim_mat = self.pairwise_cosine_sim(pooled, torch.tensor(self.proto_l).float().to(self.device)) / args.temperature
                 s_dist = F.softmax(sim_mat, dim=1)
-                cost_mat = 1 - self.pairwise_cosine_sim(pooled, torch.tensor(self.proto_l).float().cuda())
+                cost_mat = 1 - self.pairwise_cosine_sim(pooled, torch.tensor(self.proto_l).float().to(self.device))
                 loss_l = (cost_mat * s_dist * mask).sum(1).mean()
 
                 loss_pro = loss_u + args.gamma * loss_l
@@ -285,6 +293,28 @@ class ModelManager:
             avg_loss = tr_loss/nb_tr_steps
             epoch_pbar.set_postfix({'avg_loss': f'{avg_loss:.4f}'})
             print(f'Epoch {epoch} loss: {avg_loss:.4f}')
+            
+            # --- Early Stopping for main training ---
+            monitor_key = 'NMI'   # or 'ACC'/'H-Score'
+            min_delta = 0.0
+            metrics = self.quick_eval(args, self.data.eval_dataloader, self.data.known_lab)
+            score = metrics[monitor_key]
+
+            if not hasattr(self, "_best_main_score"):
+                self._best_main_score = float("-inf")
+                self._wait_main = 0
+                self._best_main_model = copy.deepcopy(self.model)
+
+            if score > self._best_main_score + min_delta:
+                self._best_main_score = score
+                self._wait_main = 0
+                self._best_main_model = copy.deepcopy(self.model)
+            else:
+                self._wait_main += 1
+                if self._wait_main >= args.wait_patient:
+                    print(f"[EarlyStop] stop at epoch {epoch}: best {monitor_key}={self._best_main_score}")
+                    self.model = self._best_main_model
+                    return
               
     def load_pretrained_model(self):
         pretrained_dict = self.pretrained_model.state_dict()
@@ -317,7 +347,7 @@ class ModelManager:
         return torch.sqrt(sum_sq_a+sum_sq_b-2*a.mm(bt))
     
     def predict_k(self, args, data):
-        feats, _ = self.get_features_labels(data.train_semi_dataloader, self.pretrained_model.cuda(), args)
+        feats, _ = self.get_features_labels(data.train_semi_dataloader, self.pretrained_model.to(self.device), args)
         feats = feats.cpu().numpy()
         km = KMeans(n_clusters = data.num_labels).fit(feats)
         y_pred = km.labels_

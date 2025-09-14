@@ -184,6 +184,7 @@ if __name__ == '__main__':
     print('Data and Parameters Initialization...')
     parser = init_model()
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id).strip()
     data = Data(args)
 
     print('Pre-training begin...')

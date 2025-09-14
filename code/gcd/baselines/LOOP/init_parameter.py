@@ -115,5 +115,8 @@ def init_model():
     parser.add_argument('--pretrain_dir', type=str, default=None, 
                     help="The base directory for saving/loading pre-trained model checkpoints.")
 
+    parser.add_argument("--es_metric", type=str, default="NMI")          # 可选: ACC|NMI|ARI|H-Score|K-ACC|N-ACC
+    parser.add_argument("--es_patience", type=int, default=5)            # 连续无提升多少个 epoch 后停止
+    parser.add_argument("--es_min_delta", type=float, default=0.0)       # 最小改进幅度
 
     return parser

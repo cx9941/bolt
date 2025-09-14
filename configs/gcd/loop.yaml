@@ -23,9 +23,13 @@ fold_idx: 0
 train_batch_size: 64
 eval_batch_size: 128
 pretrain_batch_size: 64
-num_train_epochs: 5
-num_pretrain_epochs: 10
+num_train_epochs: 50
+num_pretrain_epochs: 100
 lr: !!float 1e-5
+es_metric: "NMI"
+es_patience: 5
+es_min_delta: 0.1
+
 
 # --- 算法专属参数 ---
 # topk 从这里移到下面的专属配置中
@@ -57,3 +61,39 @@ dataset_specific_configs:
   ecdt:
     max_seq_length: 55
     topk: 55
+  # --- 新增补齐的配置 ---
+  # 短文本问答数据集
+  TREC:
+    max_seq_length: 40
+    topk: 50
+  
+  # 中等规模/段落数据集
+  AGNews:
+    max_seq_length: 128
+    topk: 200
+  Yahoo: # Yahoo Answers
+    max_seq_length: 128
+    topk: 200
+  DBPedia:
+    max_seq_length: 256
+    topk: 200
+  medical:
+    max_seq_length: 256
+    topk: 200
+
+  # 大型文档数据集
+  ele:
+    max_seq_length: 200
+    topk: 500
+  news:
+    max_seq_length: 500
+    topk: 500
+  thucnews:
+    max_seq_length: 500
+    topk: 500
+  20NG: # 20 Newsgroups
+    max_seq_length: 512
+    topk: 500
+  X-Topic:
+    max_seq_length: 512
+    topk: 500

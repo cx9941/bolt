@@ -125,6 +125,12 @@ class Manager:
         self.logger.info("Start train ...")
         indices = self.get_neighbor_inds(args, data)
         self.get_neighbor_dataset(args, data, indices)
+        # --- Early Stopping (contrastive) ---
+        patience = getattr(args, "early_stopping_patience", 3)
+        min_delta = getattr(args, "early_stopping_min_delta", 0.0)
+        wait = 0
+        best_score = float("-inf")  # 监控值（ACC/ARI/NMI 之和或 ACC）
+        monitor_sum = getattr(args, "monitor_sum_metrics", True)  # True=ACC+ARI+NMI, False=ACC
         
         for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
 
@@ -181,6 +187,21 @@ class Manager:
             self.logger.info("***** Epoch: %s: Train loss: %f *****", str(epoch), tr_loss)
             results = self.test(args, data)
 
+            # 计算本轮监控分
+            curr_score = (results['ACC'] + results['ARI'] + results['NMI']) if monitor_sum else results['ACC']
+
+            # 判断是否提升
+            if curr_score > best_score + min_delta:
+                best_score = curr_score
+                wait = 0
+            else:
+                wait += 1
+                self.logger.info("EarlyStopping: no improvement (wait=%d/%d)", wait, patience)
+                if wait >= patience:
+                    self.logger.info("EarlyStopping: patience reached, stopping training.")
+                    break
+
+
             if args.save_results:
                 self.logger.info("***** Save results *****")
                 results['epoch'] = epoch
@@ -196,7 +217,7 @@ class Manager:
                 save_model(args, self.best_model, 'best')
             
             self.model.eval()
-            save_model(args, self.model, epoch)
+            # save_model(args, self.model, epoch)
 
             self.logger.info("***** Curr and Best model metrics *****")
             self.logger.info(
@@ -217,7 +238,7 @@ class Manager:
     def test(self, args, data):
         
         feats, y_true = self.get_outputs(args, dataloader=self.test_dataloader, get_feats=True)
-        km = KMeans(n_clusters = self.num_labels).fit(feats)
+        km = KMeans(n_clusters = self.num_labels, random_state=args.seed).fit(feats)
         y_pred = km.labels_
     
         test_results = clustering_score(y_true, y_pred, data.known_lab)

@@ -107,6 +107,26 @@ class ModelManager:
                     # how to ensure there is no label leakage for unlabeled data? inds[b1] <= args.num_labeled_examples?
         return adj
 
+    def eval_on_split(self, args, data, split="eval"):
+        """
+        Evaluate on 'eval' split for early stopping.
+        The eval set in dataloader.py only keeps known classes.
+        We therefore cluster with K = data.n_known_cls.
+        Returns: results dict with keys: Acc, NMI, ARI, H-Score, Known, Novel
+        """
+        if split != "eval":
+            raise NotImplementedError("Only eval split is supported for early stopping.")
+        # 取 eval 特征
+        feats_eval, labels_eval, _ = self.get_features_labels(data.eval_dataloader, self.model, args, return_logit=True)
+        feats_eval = feats_eval.cpu().numpy()
+        # 只在已知类上聚类
+        km = KMeans(n_clusters=data.n_known_cls, random_state=args.seed).fit(feats_eval)
+        y_pred = km.labels_
+        y_true = labels_eval.cpu().numpy()
+        # known_lab 基于全量标签的下标；eval 集只含 known 类，仍可复用
+        results = clustering_score(y_true, y_pred, data.known_lab)
+        return results                          
+    
     def evaluation(self, args, data, save_results=True, plot_cm=True):
         """final clustering evaluation on test set"""
         print('\n### Evaluation ###\n')
@@ -171,6 +191,13 @@ class ModelManager:
 
         # Training
         labelediter = iter(data.train_labeled_dataloader)
+        es_metric = getattr(args, "es_metric", "NMI")      # 可在命令行/配置里传 --es_metric
+        es_patience = getattr(args, "es_patience", 5)      # --es_patience
+        es_min_delta = getattr(args, "es_min_delta", 0.0)  # --es_min_delta
+        best_es_score = -float("inf")
+        es_wait = 0
+        best_model_snapshot = copy.deepcopy(self.model)
+
         for epoch in range(int(args.num_train_epochs)):
             print(f'\n\nTraining Epoch: [{epoch+1}/{args.num_train_epochs}]')
             self.model.train()
@@ -317,6 +344,37 @@ class ModelManager:
             print('train_loss',loss)
             self.dataset.count = 0
             
+            # ==== [Early Stopping evaluation on eval split] ====
+            # 1) 提取 eval 特征
+            feats_eval, labels_eval, _ = self.get_features_labels(
+                data.eval_dataloader, self.model, args, return_logit=True
+            )
+            feats_eval_np = feats_eval.cpu().numpy()
+
+            # 2) 在 eval 集上做 KMeans（只含已知类；聚成已知类数）
+            km_eval = KMeans(n_clusters=data.n_known_cls, random_state=args.seed).fit(feats_eval_np)
+            y_pred_eval = km_eval.labels_
+            y_true_eval = labels_eval.cpu().numpy()
+
+            # 3) 计算聚类指标（Acc/NMI/ARI/H-Score/…）
+            eval_results = clustering_score(y_true_eval, y_pred_eval, data.known_lab)
+            monitor = es_metric  # "Acc" | "NMI" | "ARI" | "H-Score"
+            es_score = float(eval_results.get(monitor, 0.0))
+            print(f"[ES] epoch={epoch} {monitor}={es_score:.2f} (best={best_es_score:.2f})")
+
+            # 4) 根据提升情况更新 best / 等待计数
+            if es_score > best_es_score + es_min_delta:
+                best_es_score = es_score
+                es_wait = 0
+                best_model_snapshot = copy.deepcopy(self.model)  # 记录最好模型
+            else:
+                es_wait += 1
+                if es_wait >= es_patience:
+                    print(f"[ES] Stop main training early at epoch {epoch+1}. Best {monitor}={best_es_score:.2f}")
+                    self.model = best_model_snapshot             # 回滚到最佳
+                    break
+            # ================================================
+
             args.evaluation_epoch = epoch
             # update neighbors every several epochs
             if ((epoch + 1) % args.update_per_epoch) == 0 and ((epoch + 1) != int(args.num_train_epochs)):
@@ -678,7 +736,7 @@ if __name__ == '__main__':
         manager.evaluation(args, data) # evaluate when report performance on pretrain
         args.method = method
 
-    manager = ModelManager(args, data)
+    # manager = ModelManager(args, data)
 
     print('\n\nTraining begin...')
     print('architecture: ', args.architecture)

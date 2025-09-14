@@ -9,7 +9,7 @@ gpu_id: "3"
 dataset: "banking"       # 对应 my_args.py 中的 data
 data_dir: "./data"
 known_cls_ratio: 0.25  # 对应 my_args.py 中的 known_ratio
-labeled_ratio: 1.0     # (我们的标准参数)
+labeled_ratio: 0.1     # (我们的标准参数)
 fold_idx: 0            # (我们的标准参数)
 fold_num: 5            # (我们的标准参数)
 max_seq_length: 128    # 对应 my_args.py 中的 max_seq_length

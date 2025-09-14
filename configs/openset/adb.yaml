@@ -16,7 +16,7 @@ fold_num: 5
 # --- 模型与训练设置 ---
 # 明确指定我们公共的模型路径
 bert_model: "./pretrained_models/bert-base-uncased" 
-num_train_epochs: 2 #100
+num_train_epochs: 100 #100
 train_batch_size: 128
 eval_batch_size: 128
 lr: 2e-5

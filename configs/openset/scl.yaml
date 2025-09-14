@@ -60,7 +60,7 @@ train_batch_size: 8
 learning_rate: 0.001
 weight_decay: 0.0001
 clip: 0.25
-patience: 20              # <-- 新增, Early Stopping 的耐心步数
+patience: 10             # <-- 新增, Early Stopping 的耐心步数
 
 # --- 输出目录设置 ---
 output_dir: "./outputs/openset/scl"

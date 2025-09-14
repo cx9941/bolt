@@ -214,8 +214,12 @@ class OODMetrics(object):
         fpr = fpr_at_tpr(scores, labels)
 
         # scores
-        sup_metrics = classification_report((scores>0.5).int().detach().cpu().numpy(),  labels.detach().cpu().numpy(), output_dict=True)
-
+        # sup_metrics = classification_report((scores>0.5).int().detach().cpu().numpy(),  labels.detach().cpu().numpy(), output_dict=True)
+        sup_metrics = classification_report(
+            labels.detach().cpu().numpy(),
+            (scores > 0.5).int().detach().cpu().numpy(),
+            output_dict=True
+        )
 
         return {
             "AUROC": auroc.cpu(),
@@ -260,12 +264,14 @@ from sklearn.metrics import classification_report, roc_curve
 import copy
 def custom_metrics(preds, golds, scores=None, thred=0.5):
     if scores is None:
-        results = classification_report(preds[golds!=-1],  golds[golds!=-1], output_dict=True)
+        # results = classification_report(preds[golds!=-1],  golds[golds!=-1], output_dict=True)
+        results = classification_report(golds[golds != -1], preds[golds != -1], output_dict=True)
     else:
         final_preds = copy.deepcopy(preds)
         final_preds[scores > thred] = -1
         results = {}
-        metrics = classification_report(final_preds,  golds, output_dict=True)
+        # metrics = classification_report(final_preds,  golds, output_dict=True)
+        metrics = classification_report(golds, final_preds, output_dict=True)
         results['f1-score'] = metrics.pop('macro avg')['f1-score']
         results['accuracy'] = metrics.pop('accuracy')
         metrics.pop('weighted avg')

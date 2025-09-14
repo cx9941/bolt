@@ -105,5 +105,11 @@ def init_model():
     parser.add_argument("--max_seq_length", default=None, type=int,
                         help="The maximum total input sequence length. Set via dataset_specific_configs in YAML.")
    
-   
+    parser.add_argument("--es_metric", type=str, default="ACC",
+                        help="Early stopping metric during CLNN training: ACC|NMI|ARI|H-Score")
+    parser.add_argument("--es_patience", type=int, default=10,
+                        help="Early stopping patience (epochs without improvement).")
+    parser.add_argument("--es_min_delta", type=float, default=0.0,
+                        help="Minimum improvement to qualify as better.")
+
     return parser

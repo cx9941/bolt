@@ -134,6 +134,7 @@ class Data:
             semi_input_mask = unlabeled_input_mask
             semi_segment_ids = unlabeled_segment_ids
             semi_label_ids = unlabeled_label_ids
+            semi_true_label = unlabeled_true_label_ids
         return semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids,semi_true_label
 
     def get_semi_loader(self, semi_input_ids, semi_input_mask, semi_segment_ids, semi_label_ids,true_label_ids, args):

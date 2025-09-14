@@ -47,7 +47,7 @@ class Manager:
         # self.evaluation(data)
         self.initialize_classifier(args, data)
         self.freeze_parameters(self.model)
-        self.num_train_optimization_steps = int(len(data.train_labeled_examples) / args.train_batch_size) * args.num_pretrain_epochs
+        self.num_train_optimization_steps = int(len(data.train_labeled_examples) / args.train_batch_size) * args.num_train_epochs
         self.optimizer, self.scheduler = self.get_optimizer(args)
 
         
@@ -355,29 +355,38 @@ class Manager:
         if not os.path.exists(args.save_results_path):
             os.makedirs(args.save_results_path)
 
-        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed, self.num_labels]
-        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor','seed', 'K']
-        vars_dict = {k:v for k,v in zip(names, var) }
+        # 记录基础字段 + 评测结果
+        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio,
+            args.cluster_num_factor, args.seed, self.num_labels]
+        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio',
+                'cluster_num_factor', 'seed', 'K']
+        vars_dict = {k: v for k, v in zip(names, var)}
         results = dict(self.test_results, **vars_dict)
-        keys = list(results.keys())
-        values = list(results.values())
-        
-        file_name = 'results.csv'
-        results_path = os.path.join(args.save_results_path, file_name)
-        
-        if not os.path.exists(results_path):
-            ori = []
-            ori.append(values)
-            df1 = pd.DataFrame(ori,columns = keys)
-            df1.to_csv(results_path,index=False)
+
+        # 增加 run_time 便于追溯（可选）
+        results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        results_path = os.path.join(args.save_results_path, 'results.csv')
+        record = pd.DataFrame([results])
+
+        if os.path.exists(results_path):
+            df = pd.read_csv(results_path)
+            df = pd.concat([df, record], ignore_index=True)
+
+            # 主键去重：同一次设置只保留最后一次（keep='last'）
+            dedup_keys = [
+                'dataset', 'method', 'ablation',
+                'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor',
+                'seed', 'K'
+            ]
+            # 只有在 ablation 字段存在时去重（避免旧文件缺列报错）
+            if all(k in df.columns for k in dedup_keys):
+                df.drop_duplicates(subset=dedup_keys, keep='last', inplace=True)
         else:
-            df1 = pd.read_csv(results_path)
-            new = pd.DataFrame(results,index=[1])
-            df1 = df1._append(new,ignore_index=True)
-            df1.to_csv(results_path,index=False)
-        data_diagram = pd.read_csv(results_path)
-        
-        print('test_results', data_diagram)
+            df = record
+
+        df.to_csv(results_path, index=False)
+        print('test_results', pd.read_csv(results_path))
 
 
 def apply_config_updates(args, config_dict, parser):
@@ -413,7 +422,7 @@ if __name__ == '__main__':
         if 'dataset_specific_configs' in yaml_config:
             dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
             apply_config_updates(args, dataset_configs, parser)
-
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id).strip()
     # args.bert_model = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model
     # args.tokenizer = '../../pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
     args.bert_model = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.bert_model

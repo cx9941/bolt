@@ -20,10 +20,15 @@ backbone: "Meta-Llama-3.1-8B-Instruct"
 model_path_root: "./pretrained_models"
 
 # --- 训练设置 ---
-n_epochs: 2                # 对应 pretrain.py
+n_epochs: 20                # 对应 pretrain.py
 lr: !!float 0.001           # 对应 model.py (未使用，但保留)
 train_batch_size: 32
 eval_batch_size: 128
+
+# Early stopping 配置
+es_patience: 3        # 连续多少个 eval 没有提升就停
+es_min_delta: 0.0     # 最小提升幅度
+metric_for_best: accuracy   # 早停和保存最佳模型的指标
 
 # --- 输出目录设置 ---
 # 统一的顶层输出目录

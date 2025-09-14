@@ -5,7 +5,7 @@
 dataset: "banking"
 data_dir: "./data"
 known_cls_ratio: 0.25
-labeled_ratio: 1.0
+labeled_ratio: 0.1
 fold_idx: 0
 fold_num: 5
 seed: 0
@@ -20,10 +20,11 @@ do_train: true
 do_eval: true
 do_predict: true
 overwrite_output_dir: true
-load_best_model_at_end: false # 训练结束后是否加载最佳模型
+# load_best_model_at_end: false # 训练结束后是否加载最佳模型
+load_best_model_at_end: true
 
 # --- 训练超参数 ---
-num_train_epochs: 3.0
+num_train_epochs: 20.0
 per_device_train_batch_size: 16
 per_device_eval_batch_size: 16
 learning_rate: !!float 5e-5
@@ -41,3 +42,10 @@ contrastive_rate_in_training: 0.1
 temperature: 0.3
 sup_cont: false # 是否开启监督对比学习
 supcont_pre_epoches: 2
+
+
+evaluation_strategy: "epoch"      # <--- 新增：告诉 Trainer 每个 epoch 评估一次
+metric_for_best_model: "f1"       # <--- 新增：告诉 Trainer 监控 f1 分数
+greater_is_better: true           # <--- 新增：告诉 Trainer f1 分数越大越好
+early_stopping_patience: 3
+early_stopping_threshold: 0.0

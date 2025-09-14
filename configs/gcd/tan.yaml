@@ -22,12 +22,17 @@ fold_num: 5
 feat_dim: 768
 
 # --- 训练设置 ---
-num_train_epochs: 2
+num_train_epochs: 10
 train_batch_size: 256
 eval_batch_size: 64
 lr: 1e-5
 warmup_proportion: 0.1
-wait_patient: 20
+wait_patient: 20       # 预训练
+es_metric: sum         # 或 NMI/ACC/ARI/H-Score
+es_patience: 8         # 正式训练
+es_min_delta: 0.1      # 示例
+save_best: true
+
 
 # --- TAN 专属超参数 ---
 beta: 100
@@ -51,7 +56,7 @@ dataset_specific_configs:
     num_train_epochs: 10
   banking:
     max_seq_length: 55
-    num_train_epochs: 2
+    num_train_epochs: 20
   hwu:
     max_seq_length: 55
     num_train_epochs: 20
@@ -60,4 +65,35 @@ dataset_specific_configs:
     num_train_epochs: 20
   ecdt:
     max_seq_length: 55
+    num_train_epochs: 20
+  # --- 新增补齐的配置 ---
+  AGNews:
+    max_seq_length: 128
+    num_train_epochs: 20
+  DBPedia:
+    max_seq_length: 256
+    num_train_epochs: 20
+  20NG: # 20 Newsgroups
+    max_seq_length: 512
+    num_train_epochs: 20
+  TREC:
+    max_seq_length: 40
+    num_train_epochs: 20
+  Yahoo: # Yahoo Answers
+    max_seq_length: 128
+    num_train_epochs: 20
+  ele:
+    max_seq_length: 200
+    num_train_epochs: 20
+  news:
+    max_seq_length: 500
+    num_train_epochs: 20
+  thucnews:
+    max_seq_length: 500
+    num_train_epochs: 20
+  medical:
+    max_seq_length: 256
+    num_train_epochs: 20
+  X-Topic:
+    max_seq_length: 512
     num_train_epochs: 20

@@ -115,7 +115,13 @@ class PretrainModelManager:
                 
         self.model = best_model
         if args.save_premodel:
-            self.model.save_backbone(args.pretrain_dir)
+            # 判断 self.model 是否是 DataParallel 实例
+            if isinstance(self.model, nn.DataParallel):
+                # 如果是，则通过 .module 访问原始模型
+                self.model.module.save_backbone(args.pretrain_dir)
+            else:
+                # 如果不是（例如在单 GPU 环境下），则直接调用
+                self.model.save_backbone(args.pretrain_dir)
         
     def get_optimizer(self, args):
         num_warmup_steps = int(args.warmup_proportion*self.num_train_optimization_steps)
