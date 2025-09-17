@@ -37,9 +37,9 @@ class Data:
         self.semi_input_ids, self.semi_input_mask, self.semi_segment_ids, self.semi_label_ids, self.semi_idx_ids = self.get_semi(self.train_labeled_examples, self.train_unlabeled_examples, args)
 
 
-        dir_name = f"{args.save_results_path}/{args.dataset}_{args.known_cls_ratio}_{args.labeled_ratio}"
-        os.makedirs(dir_name, exist_ok=True)
-        np.save(f"{dir_name}/sample_idx.npy", self.semi_idx_ids)
+        # dir_name = f"{args.save_results_path}/{args.dataset}_{args.known_cls_ratio}_{args.labeled_ratio}"
+        # os.makedirs(dir_name, exist_ok=True)
+        # np.save(f"{dir_name}/sample_idx.npy", self.semi_idx_ids)
 
         self.train_semi_dataset, self.train_semi_dataloader = self.get_semi_loader(self.semi_input_ids, self.semi_input_mask, self.semi_segment_ids, self.semi_label_ids, args)
 

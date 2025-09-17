@@ -790,6 +790,7 @@ def main(args):
                 # b. 添加核心的总览性能指标
                 final_results['ACC'] = report_dict['accuracy']
                 final_results['F1'] = report_dict['macro avg']['f1-score']
+                final_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
                 # c. 添加自定义的 K-F1 (已知类F1) 和 N-F1 (未知类F1) 指标
                 # 获取所有已知类的标签名

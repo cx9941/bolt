@@ -9,7 +9,6 @@ gpu_id: "0"
 data_dir: "./data"
 bert_model: "./pretrained_models/bert-base-uncased"
 output_dir: "./outputs/gcd/tan"
-pretrain_dir: "./outputs/gcd/tan/premodels" 
 
 # --- 数据与任务设置 ---
 dataset: "banking"
@@ -22,7 +21,7 @@ fold_num: 5
 feat_dim: 768
 
 # --- 训练设置 ---
-num_train_epochs: 10
+num_train_epochs: 100
 train_batch_size: 256
 eval_batch_size: 64
 lr: 1e-5

@@ -669,6 +669,18 @@ class Evaluation:
                 final_results['F1'] = f
                 final_results['K-F1'] = f_seen
                 final_results['N-F1'] = f_unseen
+                # final_results['args'] = json.dumps(vars(self.args), ensure_ascii=False)
+                def safe_args_to_json(args_obj):
+                    safe_dict = {}
+                    for k, v in vars(args_obj).items():
+                        try:
+                            json.dumps(v)  # 测试能否直接序列化
+                            safe_dict[k] = v
+                        except (TypeError, OverflowError):
+                            safe_dict[k] = str(v)  # 不能序列化的转成字符串
+                    return json.dumps(safe_dict, ensure_ascii=False)
+
+                final_results['args'] = safe_args_to_json(self.args)
 
                 # --- 步骤2：将“单行”结果追加保存到主 results.csv 文件 ---
                 # 定义标准化的 metrics 输出目录和文件路径

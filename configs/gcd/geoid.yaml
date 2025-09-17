@@ -21,7 +21,7 @@ fold_idx: 0
 pretrain_batch_size: 100
 train_batch_size: 128
 eval_batch_size: 128
-num_pretrain_epochs: 50
+num_pretrain_epochs: 100
 num_train_epochs: 100
 num_warm_epochs: 20
 lr_pre: !!float 5e-5

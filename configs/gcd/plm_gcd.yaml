@@ -20,7 +20,7 @@ backbone: "Meta-Llama-3.1-8B-Instruct"
 model_path_root: "./pretrained_models"
 
 # --- 训练设置 ---
-n_epochs: 20                # 对应 pretrain.py
+n_epochs: 1
 lr: !!float 0.001           # 对应 model.py (未使用，但保留)
 train_batch_size: 32
 eval_batch_size: 128

@@ -364,7 +364,7 @@ class Manager:
         results = dict(self.test_results, **vars_dict)
 
         # 增加 run_time 便于追溯（可选）
-        results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         results_path = os.path.join(args.save_results_path, 'results.csv')
         record = pd.DataFrame([results])
@@ -429,9 +429,8 @@ if __name__ == '__main__':
     args.tokenizer = './pretrained_models/bert-base-chinese' if args.dataset == 'ecdt' else args.tokenizer
 
     data = Data(args)
-    args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
-    args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
-
+    args.model_file_dir = args.pretrain_dir
+    args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
 
     if os.path.exists(f'{args.save_results_path}/results.csv'):
         df_results = pd.read_csv(f'{args.save_results_path}/results.csv')
@@ -454,4 +453,4 @@ if __name__ == '__main__':
         manager_p.load_model(args)
         manager = Manager(args, data, manager_p.model)
         
-        manager.evaluation(data, tag='baseline')
+        # manager.evaluation(data, tag='baseline')

@@ -77,6 +77,8 @@ def main(args):
     final_results['K-F1'] = results_dct.get('f1_id', 0.0)
     final_results['N-F1'] = results_dct.get('f1_ood', 0.0)
 
+    final_results['args'] = json.dumps(vars(args), ensure_ascii=False)
+    
     # 7. 将结果追加保存到主 results.csv 文件
     # 使用统一的 output_dir
     metric_dir = os.path.join(args.output_dir, 'metrics')

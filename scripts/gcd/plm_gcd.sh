@@ -20,6 +20,10 @@ do
     do
         for rate in 0.25
         do
+        for fold_idx in 0
+        do
+        for labeled_ratio in 0.1
+        do
             echo "========================================================================"
             echo "Running PLM-GCD -> Dataset: ${dataset}, Rate: ${rate}, Seed: ${seed}"
             echo "========================================================================"
@@ -51,6 +55,8 @@ do
 
             echo "--- Finished run for ${dataset}, rate ${rate}, seed ${seed} ---"
         done
+    done
+    done
     done
 
 done

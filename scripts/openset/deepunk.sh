@@ -6,7 +6,7 @@ set -o errexit
 # ===================================================================
 
 # --- 脚本基础设置 ---
-GPU_ID="0"
+GPU_ID="3"
 CONFIG_FILE="configs/openset/deepunk.yaml"
 DATASET="banking"   # 当前写死为 banking，如需多数据集可改 for dataset in ...
 

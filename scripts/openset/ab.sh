@@ -8,7 +8,7 @@ set -o errexit
 # ===================================================================
 
 # --- 脚本基础设置 ---
-GPU_ID="0"
+GPU_ID="3"
 CONFIG_FILE="configs/openset/ab.yaml"
 export TF_CPP_MIN_LOG_LEVEL=2   # 忽略tf框架的输出
 # 如需锁定到单卡，可取消下一行注释

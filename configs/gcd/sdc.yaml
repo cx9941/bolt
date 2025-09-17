@@ -22,7 +22,7 @@ fold_idx: 0
 train_batch_size: 32
 pretrain_batch_size: 32
 eval_batch_size: 32
-num_train_epochs: 80
+num_train_epochs: 100
 num_pretrain_epochs: 100
 lr: !!float 5e-5
 lr_pre: !!float 5e-5

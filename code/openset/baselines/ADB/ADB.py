@@ -8,6 +8,7 @@ from util import *
 from loss import *
 import yaml  # <-- 新增
 import sys   # <-- 新增
+import json
 
 class ModelManager:
     
@@ -166,6 +167,7 @@ class ModelManager:
         var = [args.dataset, args.known_cls_ratio, args.labeled_ratio, args.seed]
         names = ['dataset', 'known_cls_ratio', 'labeled_ratio', 'seed']
         vars_dict = {k:v for k,v in zip(names, var) }
+        vars_dict['args'] = json.dumps(vars(args), ensure_ascii=False)
         results = dict(self.test_results, **vars_dict)
         
         np.save(os.path.join(results_path, 'centroids.npy'), self.centroids.detach().cpu().numpy())

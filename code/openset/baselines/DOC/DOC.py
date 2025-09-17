@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import yaml  # <-- 新增
 import sys   # <-- 新增
+import json
 
 # 1. --- 参数定义与配置注入 (SOP 标准化改造) ---
 parser = argparse.ArgumentParser()
@@ -293,6 +294,7 @@ known_labels = [l for l in set(test_y_gt) if l != len(seen_classes)]
 ood_label_str = str(len(seen_classes))
 final_results['K-F1'] = sum(metrics[str(i)]['f1-score'] for i in known_labels) / len(known_labels) if known_labels else 0.0
 final_results['N-F1'] = metrics[ood_label_str]['f1-score'] if ood_label_str in metrics else 0.0
+final_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
 if not os.path.exists(results_csv_path):
     pd.DataFrame([final_results]).to_csv(results_csv_path, index=False)

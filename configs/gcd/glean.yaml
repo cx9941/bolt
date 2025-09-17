@@ -19,8 +19,8 @@ experiment_name: "deepseek-v3:671b"
 running_method: "GCDLLMs"
 
 # --- 训练与流程控制 ---
-num_pretrain_epochs: 50
-num_train_epochs: 20
+num_pretrain_epochs: 100
+num_train_epochs: 100
 lr_pre: !!float 5e-5
 lr: !!float 1e-5
 pretrain_batch_size: 48
@@ -30,7 +30,7 @@ warmup_proportion: 0.1
 wait_patient: 20
 grad_clip: 1.0
 es_metric: "Acc"        # 可选: Acc | NMI | ARI | H-Score
-es_patience: 5          # 连续 8 个 epoch 无显著提升就停
+es_patience: 5          # 连续 5 个 epoch 无显著提升就停
 es_min_delta: 0.5       # 至少提升 0.2 才算“更好”
 
 # --- 数据集与标签设置 ---

@@ -17,6 +17,7 @@ from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
 import yaml
 import sys
+import json
 
 warnings.filterwarnings('ignore')
 logging.set_verbosity_error()
@@ -285,6 +286,7 @@ class LoopModelManager:
         
         # 2. 合并配置和结果 (self.test_results 已经包含了新的6个指标)
         full_results = {**config_to_save, **self.test_results}
+        full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
         
         # 3. 定义结果文件路径
         save_path = args.save_results_path
@@ -513,7 +515,7 @@ if __name__ == '__main__':
     print('Evaluation begin...')
     manager.evaluation(args, data)
     print('Evaluation finished!')
-    manager.cluster_name(args,data)
+    # manager.cluster_name(args,data)
     print('Saving Model ...')
     if args.save_model:
         manager.model.save_backbone(args.save_model_path)

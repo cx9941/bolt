@@ -22,6 +22,7 @@ import pandas as pd
 import copy
 import yaml
 import sys
+import json
 
 
 
@@ -119,6 +120,7 @@ class ModelManager:
         names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor','seed', 'K']
         vars_dict = {k:v for k,v in zip(names, var) }
         results = dict(self.test_results,**vars_dict)
+        results['args'] = json.dumps(vars(args), ensure_ascii=False)
         keys = list(results.keys())
         values = list(results.values())
         

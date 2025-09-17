@@ -15,6 +15,7 @@ from model import BertForOT, BertForModel
 import seaborn as sn
 import sys
 import yaml
+import json
 import argparse
 
 class Manager:
@@ -368,13 +369,13 @@ class Manager:
         self.num_labels = data.num_labels
         self.save_results(args)
 
-        km = KMeans(n_clusters = data.num_labels, n_init=20).fit(feats.cpu().numpy())
-        y_pred1 = km.labels_
-        results1 = clustering_score(y_true, y_pred1, data.known_lab)
-        results1['ablation'] = f'{tag}-kmeans'
-        self.test_results = results1
-        self.save_results(args)
-        print('results1', results1)
+        # km = KMeans(n_clusters = data.num_labels, n_init=20).fit(feats.cpu().numpy())
+        # y_pred1 = km.labels_
+        # results1 = clustering_score(y_true, y_pred1, data.known_lab)
+        # results1['ablation'] = f'{tag}-kmeans'
+        # self.test_results = results1
+        # self.save_results(args)
+        # print('results1', results1)
 
     def restore_model(self, args, model):
         output_model_file = os.path.join(args.pretrain_dir, WEIGHTS_NAME)
@@ -421,7 +422,9 @@ class Manager:
         results = dict(self.test_results, **vars_dict)
 
         # 增加 run_time 便于追溯（可选）
-        results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        results['args'] = json.dumps(vars(args), ensure_ascii=False)
+
 
         results_path = os.path.join(args.save_results_path, 'results.csv')
         record = pd.DataFrame([results])
@@ -490,9 +493,8 @@ if __name__ == '__main__':
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id).strip()
     data = Data(args)
-    args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
-    args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.pretrain_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
-
+    args.model_file_dir = args.pretrain_dir
+    args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
 
     if os.path.exists(f'{args.save_results_path}/results.csv'):
         df_results = pd.read_csv(f'{args.save_results_path}/results.csv')
@@ -523,9 +525,8 @@ if __name__ == '__main__':
             manager_p.load_model(args)
             manager = Manager(args, data, manager_p.model)
 
-        args.model_file_dir = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed))
-        args.model_file = os.path.join(f'{args.save_results_path}/ckpts/{args.dataset}_{args.labeled_ratio}', args.train_dir + '_' + str(args.known_cls_ratio) + '_' + str(args.seed), 'premodel.pth')
-
+        args.model_file_dir = args.train_dir
+        args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
         # manager.train(args,data)
         
         if not os.path.exists(args.model_file):

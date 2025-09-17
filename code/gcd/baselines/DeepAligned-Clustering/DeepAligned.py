@@ -6,7 +6,7 @@ from util import *
 import yaml
 import sys
 import math
-
+import json
 
 class ModelManager:
     
@@ -123,7 +123,6 @@ class ModelManager:
         print('confusion matrix',cm)
         self.test_results = results
         
-        self.save_results(args)
 
     def alignment(self, km, args):
 
@@ -241,6 +240,7 @@ class ModelManager:
         names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor','seed', 'K']
         vars_dict = {k:v for k,v in zip(names, var) }
         results = dict(self.test_results,**vars_dict)
+        results['args'] = json.dumps(vars(args), ensure_ascii=False)
         keys = list(results.keys())
         values = list(results.values())
         

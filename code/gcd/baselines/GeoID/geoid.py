@@ -22,6 +22,7 @@ import numpy as np
 import torch.nn as nn
 import yaml
 import sys
+import json
 torch.autograd.set_detect_anomaly(True) 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -361,7 +362,8 @@ class CLNNModelManager:
             print("epoch:",epoch)
             print('train_loss',loss)
             print("evaluation")
-            res_cluster=self.evaluation(args,data)
+            # res_cluster=self.evaluation(args,data)
+            res_cluster = self.evaluation(args, data, save_results=False, plot_cm=False)
             if(res_cluster>best_res_cluster):
                 best_res_cluster=res_cluster
             print("best_res_cluster:",best_res_cluster)     
@@ -463,6 +465,7 @@ class CLNNModelManager:
         names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'topk', 'view_strategy', 'seed']
         vars_dict = {k:v for k,v in zip(names, var)}
         results = dict(self.test_results,**vars_dict)
+        results['args'] = json.dumps(vars(args), ensure_ascii=False)
         keys = list(results.keys())
         values = list(results.values())
         
@@ -540,7 +543,8 @@ if __name__ == '__main__':
     if args.report_pretrain:
         method = args.method
         args.method = 'pretrain'
-        manager.evaluation(args, data) # evaluate when report performance on pretrain
+        # manager.evaluation(args, data) # evaluate when report performance on pretrain
+        manager.evaluation(args, data, save_results=False, plot_cm=False)
         args.method = method
 
     print('Training begin...')

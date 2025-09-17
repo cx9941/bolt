@@ -114,7 +114,14 @@ def main(args):
     print("Saving results...")
     report = classification_report(y_test_mask, y_pred, output_dict=True, zero_division=0)
     
-    final_results = {'dataset': args.dataset, 'seed': args.seed, 'known_cls_ratio': args.known_cls_ratio, 'ACC': report['accuracy'], 'F1': report['macro avg']['f1-score']}
+    final_results = {
+        'dataset': args.dataset, 
+        'seed': args.seed, 
+        'known_cls_ratio': args.known_cls_ratio, 
+        'ACC': report['accuracy'], 
+        'F1': report['macro avg']['f1-score'],
+        'args': json.dumps(vars(args), ensure_ascii=False) 
+    }
     known_f1_scores = [report[label]['f1-score'] for label in le.classes_ if label in report]
     final_results['K-F1'] = sum(known_f1_scores) / len(known_f1_scores) if known_f1_scores else 0.0
     final_results['N-F1'] = report['unseen']['f1-score'] if 'unseen' in report else 0.0

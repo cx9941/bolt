@@ -16,7 +16,7 @@ bert_model: "./pretrained_models/bert-base-uncased"
 
 # --- 数据集与标签设置 ---
 labeled_ratio: 0.1
-fold_num: 5
+# fold_num: 5
 fold_idx: 0
 
 # --- 训练参数 ---

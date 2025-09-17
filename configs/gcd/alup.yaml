@@ -17,8 +17,8 @@ bert_model: "./pretrained_models/bert-base-uncased"
 output_base_dir: "./outputs/gcd/alup" 
 
 # --- 训练超参数 ---
-num_pretrain_epochs: 100 # 对应ALUP的预训练阶段
-num_train_epochs: 34     # 对应ALUP的对比学习和主动学习微调阶段
+num_pretrain_epochs: 1 # 对应ALUP的预训练阶段
+num_train_epochs: 1     # 对应ALUP的对比学习和主动学习微调阶段
 pretrain_batch_size: 16
 train_batch_size: 32
 eval_batch_size: 64

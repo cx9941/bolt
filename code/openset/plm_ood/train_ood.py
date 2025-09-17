@@ -25,6 +25,7 @@ import numpy as np
 import logging
 import sys
 import yaml
+import json
 
 from model import Model
 from load_dataset import load_and_prepare_datasets
@@ -144,6 +145,7 @@ def run_ood_evaluation(args):
 
     df = pd.DataFrame(results)
     mean_scores = df.groupby(["Detector"]).mean() * 100
+    mean_scores['args'] = json.dumps(vars(args), ensure_ascii=False)
     logging.info(mean_scores.sort_values("AUROC").to_csv(float_format="%.2f"))
     mean_scores.to_csv(args.metric_file, sep='\t')
 

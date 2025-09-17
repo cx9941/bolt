@@ -16,14 +16,14 @@ pretrain_dir: "outputs/gcd/loop/premodels"
 bert_model: "./pretrained_models/bert-base-uncased"
 tokenizer: "./pretrained_models/bert-base-uncased"
 labeled_ratio: 0.1
-fold_num: 5
+# fold_num: 5
 fold_idx: 0
 
 # --- 训练参数 ---
 train_batch_size: 64
 eval_batch_size: 128
 pretrain_batch_size: 64
-num_train_epochs: 50
+num_train_epochs: 100
 num_pretrain_epochs: 100
 lr: !!float 1e-5
 es_metric: "NMI"

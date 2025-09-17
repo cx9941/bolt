@@ -12,6 +12,7 @@ from loss import *
 from sklearn.metrics import classification_report
 import yaml
 import sys
+import json
 
 
 def set_seed_all(seed):
@@ -246,6 +247,7 @@ class ModelManager:
                 results['temperature'] = args.temperature
                 results['KCCL_LOSS_LAMBDA'] = args.KCCL_LOSS_LAMBDA
                 results['CE_LOSS_LAMBDA'] = args.CE_LOSS_LAMBDA
+                results['args'] = json.dumps(vars(args), ensure_ascii=False)
                 print(results)
                 return results
             self.save_results(args, result_dict(y_true, y_pred, known_acc, unknown_acc, 'src'))

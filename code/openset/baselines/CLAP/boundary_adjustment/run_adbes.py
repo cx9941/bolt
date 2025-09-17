@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from init_parameter import init_model
 import yaml
 import sys
+import json
 
 class ModelManager:
     def __init__(self, args, data, pretrained_model):
@@ -131,6 +132,7 @@ class ModelManager:
         final_results['F1'] = self.test_results.get('F1-score', 0.0)
         final_results['K-F1'] = self.test_results.get('F1-score_seen', 0.0)
         final_results['N-F1'] = self.test_results.get('F1-score_unseen', 0.0)
+        final_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
         metric_dir = os.path.join(args.output_dir, 'metrics')
         os.makedirs(metric_dir, exist_ok=True)

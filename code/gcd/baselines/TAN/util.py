@@ -5,20 +5,9 @@ from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score
 from scipy.optimize import linear_sum_assignment
 import torch
 import torch.nn.functional as F
+import json
 
 def save_results(method_name, args, results, num_labels):
-    """
-    将实验结果和超参数保存到全局的 CSV 文件中。
-    采用 Pandas 实现，功能更强大。
-    
-    :param method_name: 本次运行的方法名，例如 'TAN'
-    :param args: 包含所有超参数的 Namespace 对象
-    :param results: 包含评估指标的字典
-    :param num_labels: 最终聚类的簇数 K
-    """
-    # 1. 定义要保存的实验配置
-    # 注意：这里我们假设 args 对象中包含了所有需要的参数
-    # 你可以根据需要从 args 中添加更多你想记录的参数
     config_to_save = {
         'method': method_name,
         'dataset': args.dataset,
@@ -28,36 +17,23 @@ def save_results(method_name, args, results, num_labels):
         'seed': args.seed,
         'K': num_labels
     }
-    
-    # 2. 合并配置和结果
+
     full_results = {**config_to_save, **results}
-    
-    # 3. 定义结果文件路径
-    # 我们将结果保存在一个固定的 outputs 文件夹下
-    # save_path = "outputs"
-    save_path = args.output_dir 
+    full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
+
+    save_path = args.output_dir
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     results_file = os.path.join(save_path, "results.csv")
-    
-    # 4. 使用 Pandas 写入 CSV
-    # 将字典转换为 DataFrame
+
     new_df = pd.DataFrame([full_results])
-    
+
     if not os.path.exists(results_file):
-        # 如果文件不存在，直接写入（包含表头）
         new_df.to_csv(results_file, index=False)
     else:
-        # 如果文件存在，追加写入（不含表头）
         new_df.to_csv(results_file, mode='a', header=False, index=False)
-        
+
     print(f"Results successfully saved to {results_file}")
-    
-    # (可选) 打印整个结果表格
-    # print("\n--- Cumulative Results ---")
-    # all_data_df = pd.read_csv(results_file)
-    # print(all_data_df)
-    # print("--------------------------\n")
 
 def hungray_aligment(y_true, y_pred):
     D = max(y_pred.max(), y_true.max()) + 1

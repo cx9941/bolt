@@ -18,34 +18,36 @@ do
 # 使用标准的数据集列表
 for dataset in 'banking'
 do
-    # --- A. 为当前 dataset 启动计时器 ---
-    dataset_start_time=$(date +%s)
-    echo ""
     echo ">>>>>>>>>> Starting process for dataset: [${dataset}] <<<<<<<<<<"
 
     for known_cls_ratio in 0.25
     do
     for fold_idx in 0
     do
+    for labeled_ratio in 0.5
+    do
         echo "========================================================================"
         echo "Running LOOP with: dataset=${dataset}, known_cls_ratio=${known_cls_ratio}, fold=${fold_idx}, seed=${seed}"
         echo "========================================================================"
 
-        PRETRAIN_DIR_DYN="outputs/gcd/sdc/premodels/${dataset}_${known_cls_ratio}_${seed}"
-
+        PRETRAIN_DIR_DYN="outputs/gcd/loop/premodels/${dataset}_${known_cls_ratio}_${labeled_ratio}_fold${fold_idx}_seed${seed}"
+        SAVE_MODEL_DIR="outputs/gcd/loop/models/${dataset}_${known_cls_ratio}_${labeled_ratio}_fold${fold_idx}_seed${seed}"
         # --- 3. 执行区 (直接调用) ---
         # 移除了 parse_yaml.py，直接向 loop.py 传递参数
         python code/gcd/baselines/LOOP/loop.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \
+            --labeled_ratio $labeled_ratio \
             --fold_idx $fold_idx \
             --seed $seed \
             --gpu_id $GPU_ID \
             --pretrain_dir $PRETRAIN_DIR_DYN \
+            --save_model_path $SAVE_MODEL_DIR \
             --save_premodel \
             --save_model
 
+    done
     done
     done
 

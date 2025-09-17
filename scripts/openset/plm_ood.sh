@@ -13,7 +13,7 @@ RUN_STAGE_2=true   # 阶段2: 执行OOD训练 (train_ood.py)
 # --- 2. 基础配置 ---
 # 基础模板配置文件，命令行中的参数将覆盖这里面的值
 CONFIG_FILE="configs/openset/plm_ood.yaml"
-GPU_ID="0"
+GPU_ID="3"
 export CUDA_VISIBLE_DEVICES=$GPU_ID # 防止自动分配到不同卡
 
 # --- 3. 循环控制区 ---

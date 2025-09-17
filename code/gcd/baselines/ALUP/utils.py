@@ -7,6 +7,7 @@ import torch.nn as nn
 import numpy as np
 import logging
 import datetime
+import json
 import pandas as pd
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import confusion_matrix, normalized_mutual_info_score, adjusted_rand_score, accuracy_score
@@ -183,6 +184,8 @@ def save_results(args, test_results):
     # 2. 合并配置和结果
     full_results = {**config_to_save, **test_results}
     
+    full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
+
     # 3. 沿用 ALUP 更灵活的、从 args 读取路径的定义方式
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
@@ -193,7 +196,7 @@ def save_results(args, test_results):
     # 4. 定义我们期望的最终列顺序，与 LOOP 项目完全对齐
     desired_order = [
         'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
-        'seed', 'K', 'Epoch', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI'
+        'seed', 'K', 'Epoch', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
     ]
     
     # 5. 使用 Pandas 写入 CSV
@@ -238,6 +241,7 @@ def save_results_pter(args, test_results):
     names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
     vars_dict = {k:v for k,v in zip(names, var) }
     results = dict(test_results,**vars_dict)
+    results['args'] = json.dumps(vars(args), ensure_ascii=False)
     keys = list(results.keys())
     values = list(results.values())
     

@@ -214,7 +214,7 @@ class Manager:
                 best_metrics['ARI'] = results['ARI']
                 best_metrics['NMI'] = results['NMI']
                 self.best_model = copy.deepcopy(self.model.eval())
-                save_model(args, self.best_model, 'best')
+                save_model(args, self.best_model, 'best') # 保存模型
             
             self.model.eval()
             # save_model(args, self.model, epoch)

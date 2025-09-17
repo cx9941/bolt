@@ -378,7 +378,7 @@ class ModelManager:
             args.evaluation_epoch = epoch
             # update neighbors every several epochs
             if ((epoch + 1) % args.update_per_epoch) == 0 and ((epoch + 1) != int(args.num_train_epochs)):
-                self.evaluation(args, data, save_results=True, plot_cm=False)
+                self.evaluation(args, data, save_results=False, plot_cm=False)
 
                 # Obtain initial features, labels, logits
                 feats_gpu, labels, logits = self.get_features_labels(data.train_semi_dataloader, self.model, args, return_logit=True)
@@ -606,10 +606,11 @@ class ModelManager:
                  'flag_demo', 'known_demo_num_per_class', 'flag_filtering', 'flag_demo_c', 'known_demo_num_per_class_c', 'flag_filtering_c', 'filter_threshold', 'filter_threshold_c']
         vars_dict = {k:v for k,v in zip(names, var)}
         results = dict(self.test_results,**vars_dict)
+        results['args'] = json.dumps(vars(args), ensure_ascii=False)
         keys = list(results.keys())
         values = list(results.values())
         
-        file_name = f'results_{args.experiment_name}.csv'
+        file_name = 'results.csv'
         results_path = os.path.join(args.save_results_path, file_name)
         
         if not os.path.exists(results_path):
