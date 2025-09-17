@@ -8,14 +8,23 @@ LOG_FILE="run_log_$(date +'%Y-%m-%d_%H-%M-%S').txt"
 # 2. 定义需要按顺序执行的脚本列表
 #    请根据您的图片和需求，在这里添加所有需要运行的sh文件路径
 SCRIPTS_TO_RUN=(
+    "scripts/gcd/alup.sh"
+    "scripts/gcd/deepaligned.sh"
     "scripts/gcd/dpn.sh"
+    "scripts/gcd/geoid.sh"
+    "scripts/gcd/glean.sh"
+    "scripts/gcd/loop.sh"
+    "scripts/gcd/plm_gcd.sh"
     "scripts/gcd/sdc.sh"
+    "scripts/gcd/tan.sh"
     "scripts/openset/ab.sh"
     "scripts/openset/adb.sh"
     "scripts/openset/clap.sh"
+    "scripts/openset/deepunk.sh"
     "scripts/openset/doc.sh"
     "scripts/openset/dyen.sh"
     "scripts/openset/knncon.sh"
+    "scripts/openset/plm_ood.sh"
     "scripts/openset/scl.sh"
 )
 
