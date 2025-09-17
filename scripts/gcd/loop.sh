@@ -10,6 +10,7 @@ CONFIG_FILE="configs/gcd/loop.yaml"
 GPU_ID="1"
 export CUDA_VISIBLE_DEVICES=$GPU_ID # 防止自动分配到不同卡
 export TF_CPP_MIN_LOG_LEVEL=2
+export OPENAI_API_KEY=6c5c96209c4ef126a87fbe9840fab7c346b4c6fb6a57529fce7dea01c683fd1b
 
 # 日志目录与文件
 mkdir -p time_log

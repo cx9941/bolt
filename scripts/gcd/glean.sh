@@ -7,7 +7,7 @@ set -o errexit
 
 # --- 1. 基础配置 ---
 CONFIG_FILE="configs/gcd/glean.yaml"
-GPU_ID="2"
+GPU_ID="0"
 export CUDA_VISIBLE_DEVICES="$GPU_ID"
 
 # 避免在日志中打印敏感信息

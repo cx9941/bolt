@@ -8,11 +8,16 @@ set -o errexit
 # ===================================================================
 
 # --- 脚本基础设置 ---
-GPU_ID="3"
+GPU_ID="1"
 CONFIG_FILE="configs/openset/ab.yaml"
 export TF_CPP_MIN_LOG_LEVEL=2   # 忽略tf框架的输出
 # 如需锁定到单卡，可取消下一行注释
-# export CUDA_VISIBLE_DEVICES=$GPU_ID
+export CUDA_VISIBLE_DEVICES=$GPU_ID
+
+# --- 新增：时间日志设置 ---
+mkdir -p time_log
+LOG_FILE="time_log/ab_time.log"
+echo "================== AB Run @ $(date '+%F %T') ==================" | tee -a "$LOG_FILE"
 
 # --- 批量实验循环 ---
 for emb_name in sbert
@@ -21,16 +26,14 @@ do
   do
     for dataset in banking
     do
-      # 为当前 dataset（在该 emb/seed 下）启动计时器
-      dataset_start_time=$(date +%s)
-      echo ""
-      echo ">>>>>>>>>> Starting process for dataset: [${dataset}] (emb=${emb_name}, seed=${seed}) <<<<<<<<<<"
+      echo "" | tee -a "$LOG_FILE"
+      echo ">>>>>>>>>> Starting process for dataset: [${dataset}] (emb=${emb_name}, seed=${seed}) <<<<<<<<<<" | tee -a "$LOG_FILE"
 
       for ratio in 0.25
       do
-        echo "===================================================="
-        echo "Running AB -> Dataset: ${dataset}, Embedding: ${emb_name}, Seed: ${seed}, Known Ratio: ${ratio}"
-        echo "===================================================="
+        echo "====================================================" | tee -a "$LOG_FILE"
+        echo "Running AB -> Dataset: ${dataset}, Embedding: ${emb_name}, Seed: ${seed}, Known Ratio: ${ratio}" | tee -a "$LOG_FILE"
+        echo "====================================================" | tee -a "$LOG_FILE"
 
         # 单次组合计时开始
         run_start_time=$(date +%s)
@@ -46,10 +49,17 @@ do
           --gpu_id "${GPU_ID}" \
           --output_dir "./outputs/openset/ab/${dataset}_${emb_name}_${ratio}_${seed}"
 
-      done
+        # 单次组合计时结束 + 记录
+        run_end_time=$(date +%s)
+        run_seconds=$((run_end_time - run_start_time))
+        run_h=$((run_seconds / 3600)); run_m=$(((run_seconds % 3600) / 60)); run_s=$((run_seconds % 60))
+        echo "Finished AB run: dataset=${dataset}, emb=${emb_name}, seed=${seed}, ratio=${ratio}" | tee -a "$LOG_FILE"
+        echo "Runtime: ${run_h}h ${run_m}m ${run_s}s (${run_seconds} seconds)" | tee -a "$LOG_FILE"
+        echo "" | tee -a "$LOG_FILE"
 
+      done
     done
   done
 done
 
-echo "All AB experiments have been completed."
+echo "All AB experiments have been completed." | tee -a "$LOG_FILE"
