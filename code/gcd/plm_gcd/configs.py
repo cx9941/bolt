@@ -86,7 +86,6 @@ args.metric_dir = args.save_results_path
 os.makedirs(args.metric_dir, exist_ok=True)
 os.makedirs(args.log_dir, exist_ok=True)
 os.makedirs(args.case_path, exist_ok=True)
-os.makedirs(args.checkpoint_path) # checkpoint 目录也需要创建
 os.makedirs(args.checkpoint_path, exist_ok=True) # checkpoint 目录也需要创建
 
 # metric_file 路径也应使用新的根目录

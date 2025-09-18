@@ -7,17 +7,6 @@ import torch
 import torch.nn.functional as F
 import json
 
-var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio,  args.seed]
-names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'seed']
-vars_dict = {k:v for k,v in zip(names, var)}
-results = dict(self.test_results,**vars_dict)
-results['args'] = json.dumps(vars(args), ensure_ascii=False)
-results['cluster_num_factor'] = args.cluster_num_factor
-# keys = list(results.keys())
-# values = list(results.values())
-
-
-
 def save_results(method_name, args, results, num_labels):
     config_to_save = {
         'dataset': args.dataset,

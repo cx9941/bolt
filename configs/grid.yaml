@@ -4,8 +4,8 @@ maps:
   openset: [ab, adb, clap, deepunk, doc, dyen, knncon, plm_ood, scl]
 
 # 若仅跑子集，可指定 methods（会从 maps 里筛选）
-methods: [glean, loop, plm_gcd, sdc, tan]
-# methods: [tan]
+methods: [alup, deepaligned, dpn, geoid, glean, loop, plm_gcd, sdc, tan]
+# methods: [plm_gcd]
 
 # 数据集（留空则自动在 data/ 与 data/<task>/ 下尝试发现）
 datasets: [stackoverflow]
@@ -14,7 +14,7 @@ datasets: [stackoverflow]
 grid:
   known_cls_ratio: [0.25]
   labeled_ratio: [0.1]
-  fold_idxs: [0]
+  fold_idxs: [0,1]
   seeds: [2025]
   cluster_num_factor: [1.0]   # 需要多值就加上 [0.8, 1.0, 1.2]
 

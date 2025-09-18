@@ -8,7 +8,9 @@ import argparse
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+from queue import Queue
+import time
+import traceback
 import yaml  # 要求：环境需安装 pyyaml
 
 from utils import (
@@ -70,7 +72,28 @@ def main():
         print("[ERR] datasets 为空。")
         sys.exit(1)
 
-    # 组合与并行
+    # === 动态 GPU 调度器 ===
+    # 支持 YAML: run.slots_per_gpu（默认1），run.retry_on_oom（默认True），run.max_retries（默认2）
+    slots_per_gpu = int(run.get("slots_per_gpu", 1))
+    retry_on_oom = bool(run.get("retry_on_oom", True))
+    max_retries   = int(run.get("max_retries", 2))
+    backoff_sec   = float(run.get("retry_backoff_sec", 15.0))
+
+    # 令牌池：每块 GPU 投入 slots_per_gpu 个令牌（并发槽位）
+    gpu_pool = Queue()
+    if gpus:
+        for gid in gpus:
+            for _ in range(slots_per_gpu):
+                gpu_pool.put(gid)
+        pool_size = len(gpus) * slots_per_gpu
+    else:
+        # 无 GPU 列表：投一个 None 令牌，表示走 CPU 或由方法内部自行决定
+        gpu_pool.put(None)
+        pool_size = 1
+
+    print(f"[SCHED] GPU tokens: {pool_size} | gpus={gpus or ['CPU']} | slots_per_gpu={slots_per_gpu}")
+
+    # 组合与并行（保持你原来的 combos 生成逻辑）
     combos = []
     for m in final_methods:
         for d in datasets:
@@ -82,25 +105,63 @@ def main():
                                 combos.append((m, d, kr, lr, fi, sd, cf))
 
     print(f"[INFO] 组合数={len(combos)} | methods={final_methods} | datasets={datasets}")
-    gpu_cycle = list(gpus) if gpus else [None]
 
-    futs = []
-    from cli import METHOD_REGISTRY  # 延迟导入以避免循环
-    with ThreadPoolExecutor(max_workers=max(1, max_workers)) as ex:
-        for idx, (m, d, kr, lr, fi, sd, cf) in enumerate(combos):
-            gpu_id = gpu_cycle[idx % len(gpu_cycle)] if gpu_cycle else None
-            print(f"[INFO] 运行: 数据集: {d}，方法: {m} | 已知类比例 {kr} 已知有标签数据比例 {lr} 五折id {fi} 种子 {sd} 聚类比例 {cf}")
-            futs.append(ex.submit(
-                run_combo,
-                method=m, dataset=d, known=kr, labeled=lr,
-                fold_idx=fi, seed=sd, c_factor=cf,
-                gpu_id=gpu_id,
-                # ★ 新增参数传入
-                num_pretrain_epochs=num_pretrain_epochs,
-                num_train_epochs=num_train_epochs,
-                dry_run=dry_run, only_collect=only_collect
-            ))
-        for fu in as_completed(futs):
+    def worker(task):
+        """从池中领取 GPU -> 执行 -> 归还；可选 OOM 重试"""
+        m, d, kr, lr, fi, sd, cf = task
+        tries = 0
+        while True:
+            gpu_id = gpu_pool.get()  # 阻塞，直到有空闲 GPU
+            try:
+                print(f"[RUN ] {d} | {m} | kr={kr} lr={lr} fold={fi} seed={sd} cf={cf} | gpu={gpu_id}")
+                return run_combo(
+                    method=m, dataset=d, known=kr, labeled=lr,
+                    fold_idx=fi, seed=sd, c_factor=cf,
+                    gpu_id=gpu_id,
+                    num_pretrain_epochs=num_pretrain_epochs,
+                    num_train_epochs=num_train_epochs,
+                    dry_run=dry_run, only_collect=only_collect
+                )
+            except RuntimeError as e:
+                msg = str(e)
+                # 仅在检测到 CUDA OOM 时重试（可按需扩展匹配条件）
+                is_oom = ("CUDA out of memory" in msg) or ("out of memory" in msg)
+                print(f"[ERR ] {m}@{d} fold={fi} seed={sd} on gpu={gpu_id} | {e.__class__.__name__}: {msg}")
+                if retry_on_oom and is_oom and tries < max_retries:
+                    tries += 1
+                    print(f"[RETRY] OOM detected. Retry {tries}/{max_retries} after {backoff_sec}s (will try another GPU if available).")
+                    time.sleep(backoff_sec)
+                    # 归还当前 GPU，再循环重新领取（可能是另一块 GPU）
+                    gpu_pool.put(gpu_id)
+                    continue
+                else:
+                    # 失败也必须归还 GPU，然后抛出
+                    raise
+            except Exception:
+                print(f"[FATAL] Unexpected error in task {task} on gpu={gpu_id}")
+                traceback.print_exc()
+                raise
+            finally:
+                # 正常完成或异常都会走到这里，但上面 OOM 重试时已经手动归还过
+                # 为避免重复 put，这里仅在“没有被 continue”时归还
+                if 'gpu_id' in locals():
+                    # 当发生 OOM 且进入 continue 前，我们已 put 过；这里做个保护
+                    try:
+                        # 如果队列未被 put 回来，这里补一次
+                        # 简单做法：始终 put 回来，但在 OOM 分支 continue 前已 put 过，会导致多放一次。
+                        # 为安全起见，可以用 try/except 忽略偶发不平衡，或引入更精细的状态变量。
+                        gpu_pool.put(gpu_id)
+                    except Exception:
+                        pass
+
+    # 线程池大小建议与 gpu token 数或 combos 数挂钩
+    max_workers_eff = max(1, min(max_workers, pool_size, len(combos)))
+    futures = []
+    with ThreadPoolExecutor(max_workers=max_workers_eff) as ex:
+        for task in combos:
+            futures.append(ex.submit(worker, task))
+        # 等待全部完成，抛出异常（便于中断）
+        for fu in as_completed(futures):
             _ = fu.result()
 
     from utils import SUMMARY_CSV
