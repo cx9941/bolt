@@ -53,9 +53,9 @@ class ModelManager:
         if self.tokenizer is None:
             self.tokenizer = BertTokenizer.from_pretrained(args.pretrain_model_path)  
 
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
-
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if self.device.type == "cuda":
+            torch.cuda.set_device(0) 
         self.model.to(self.device)
 
         self.best_eval_score = 0

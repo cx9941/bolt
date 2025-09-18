@@ -89,6 +89,7 @@ def init_model():
                         help="Minimum absolute improvement to reset patience for main training.")
     parser.add_argument("--es_metric", default="eval_acc", type=str,
                         help="Early stopping metric for main training: eval_acc | train_loss")
-
+    parser.add_argument("--result_dir", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
     
     return parser

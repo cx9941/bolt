@@ -10,9 +10,10 @@ known_cls_ratio: 0.25
 seed: 0
 gpu_id: "3"
 data_dir: "data"
-save_results_path: "outputs/gcd/deepaligned/results"
+save_results_path: "results/gcd/deepaligned"
 pretrain_dir: "outputs/gcd/deepaligned/premodels"
 bert_model: "./pretrained_models/bert-base-uncased"
+result_dir: "./results/gcd/deepaligned"
 
 # --- 数据集与标签设置 ---
 labeled_ratio: 0.1

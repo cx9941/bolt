@@ -111,6 +111,9 @@ def parse_arguments():
     parser.add_argument("--uncertainty_neighbour_num", type=int, default=None, help="Number of neighbors for uncertainty refinement.")
     parser.add_argument("--rho", type=float, default=None, help="Parameter for similarity score calculation in uncertainty refinement.")
 
+    parser.add_argument("--result_dir", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
+    
     # 日志相关 (可以保留)
     parser.add_argument('--log_dir', type=str, default='logs', help="Logger directory.")
     parser.add_argument("--logger_name", type=str, default='Discovery', help="The name for the logger.")

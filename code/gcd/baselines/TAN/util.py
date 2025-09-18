@@ -21,7 +21,7 @@ def save_results(method_name, args, results, num_labels):
     full_results = {**config_to_save, **results}
     full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
-    save_path = args.output_dir
+    save_path = args.save_results_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     results_file = os.path.join(save_path, "results.csv")

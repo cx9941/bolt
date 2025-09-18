@@ -81,6 +81,8 @@ def init_model():
     
     parser.add_argument("--output_dir", default='./outputs', type=str, 
                     help="The output directory where results and models will be written.")
+    parser.add_argument("--result_dir", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
     # --- Early stopping (main training) ---
     parser.add_argument("--es_metric", type=str, default="sum", 
                         help="Metric for early stopping: ACC|NMI|ARI|H-Score|sum (sum=ACC+NMI+ARI+H-Score)")

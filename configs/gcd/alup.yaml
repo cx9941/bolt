@@ -15,6 +15,7 @@ data_dir: "./data"
 bert_model: "./pretrained_models/bert-base-uncased"
 # `output_base_dir` 是一个基础路径，脚本会在此基础上创建pretrain和finetune的子目录
 output_base_dir: "./outputs/gcd/alup" 
+save_results_path: "./results/gcd/alup"
 
 # --- 训练超参数 ---
 num_pretrain_epochs: 1 # 对应ALUP的预训练阶段

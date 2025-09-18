@@ -74,8 +74,9 @@ def init_model():
     
     parser.add_argument("--gamma", default=None, type=float,
                         help="The gamma value for loss calculation. Set via dataset_specific_configs in YAML.")
-   
-   
+
+    parser.add_argument("--result_dir", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
     
     # 在现有参数后添加以下参数
     parser.add_argument("--save_results_path", default='./results', type=str,

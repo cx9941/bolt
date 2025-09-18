@@ -10,7 +10,7 @@ known_cls_ratio: 0.25
 seed: 42
 gpu_id: "0"
 data_dir: "data"
-save_results_path: "outputs/gcd/loop"
+save_results_path: "results/gcd/loop"
 save_model_path: "outputs/gcd/loop/model"
 pretrain_dir: "outputs/gcd/loop/premodels" 
 bert_model: "./pretrained_models/bert-base-uncased"

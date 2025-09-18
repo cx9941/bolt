@@ -111,5 +111,6 @@ def init_model():
                         help="Early stopping patience (epochs without improvement).")
     parser.add_argument("--es_min_delta", type=float, default=0.0,
                         help="Minimum improvement to qualify as better.")
-
+    parser.add_argument("--result_dir", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
     return parser

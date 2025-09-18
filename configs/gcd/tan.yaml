@@ -9,7 +9,7 @@ gpu_id: "0"
 data_dir: "./data"
 bert_model: "./pretrained_models/bert-base-uncased"
 output_dir: "./outputs/gcd/tan"
-result_dir: "./results/gcd/tan"
+save_results_path: "./results/gcd/tan"
 
 # --- 数据与任务设置 ---
 dataset: "banking"

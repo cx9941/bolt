@@ -10,7 +10,7 @@ seed: 0
 # --- 路径与环境设置 ---
 gpu_id: "3"
 data_dir: "./data" # 统一使用相对路径
-save_results_path: "./outputs/gcd/sdc"
+save_results_path: "./results/gcd/sdc"
 bert_model: "./pretrained_models/bert-base-uncased"
 tokenizer: "./pretrained_models/bert-base-uncased"
 

@@ -9,7 +9,7 @@ known_cls_ratio: 0.25
 # --- 常用参数 ---
 seed: 0
 data_dir: "data"
-save_results_path: "outputs/gcd/geoid"
+save_results_path: "results/gcd/geoid"
 save_model_path: "outputs/gcd/geoid/models"
 bert_model: "./pretrained_models/bert-base-uncased"
 tokenizer: "./pretrained_models/bert-base-uncased"
