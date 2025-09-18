@@ -81,7 +81,7 @@ def main(args):
     
     # 7. 将结果追加保存到主 results.csv 文件
     # 使用统一的 output_dir
-    metric_dir = os.path.join(args.output_dir, 'metrics')
+    metric_dir = os.path.join(args.save_results_path, 'metrics')
     os.makedirs(metric_dir, exist_ok=True)
     results_path = os.path.join(metric_dir, 'results.csv')
 
@@ -113,6 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('--emb_name', type=str, choices=["sbert", "use_dan", "use_tran"], default='sbert')
     parser.add_argument('--alpha', type=float, default=0.35)
     parser.add_argument('--output_dir', type=str, default='./outputs/openset/ab')
+    parser.add_argument("--save_results_path", default='./results', type=str, 
+                    help="The metric directory where results and models will be written.")
     
     args = parser.parse_args()
     

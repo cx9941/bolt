@@ -85,7 +85,7 @@ def main():
     gpu_cycle = list(gpus) if gpus else [None]
 
     futs = []
-    from cli import METHOD_REGISTRY  # 延迟导入以避免循环
+    from cli_gcd import METHOD_REGISTRY  # 延迟导入以避免循环
     with ThreadPoolExecutor(max_workers=max(1, max_workers)) as ex:
         for idx, (m, d, kr, lr, fi, sd, cf) in enumerate(combos):
             gpu_id = gpu_cycle[idx % len(gpu_cycle)] if gpu_cycle else None

@@ -200,8 +200,13 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
               # ★ 新增形参
               num_pretrain_epochs: int, num_train_epochs: int,
               dry_run: bool, only_collect: bool) -> Optional[dict]:
-    from cli import METHOD_REGISTRY  # 避免循环导入
-    spec = METHOD_REGISTRY.get(method)
+    from cli_gcd import METHOD_REGISTRY_GCD  # 避免循环导入
+    from cli_openset import METHOD_REGISTRY_OPENSET  # 避免循环导入
+    if method in METHOD_REGISTRY_GCD:
+        spec = METHOD_REGISTRY_GCD.get(method)
+    else:
+        spec = METHOD_REGISTRY_OPENSET.get(method)
+        
     if not spec:
         print(f"[WARN] Unknown method: {method}"); return None
 

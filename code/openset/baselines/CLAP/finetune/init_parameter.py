@@ -142,5 +142,6 @@ def init_model():
     parser.add_argument("--output_dir", type=str, default='./outputs/openset/clap', help="Standardized output directory.")
     parser.add_argument("--fold_idx", type=int, default=0, help="The index of the fold for cross-validation.")
     parser.add_argument("--fold_num", type=int, default=5, help="The total number of folds for cross-validation.")
+    parser.add_argument("--save_results_path", type=str, default='./results', help="the path to save results")
 
     return parser

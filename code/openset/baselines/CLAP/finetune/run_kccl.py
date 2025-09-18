@@ -383,7 +383,7 @@ class ModelManager:
         values = list(results.values())
 
         file_name = 'results.csv'
-        results_path = os.path.join(args.pretrain_model_path, file_name)
+        results_path = os.path.join(args.save_results_path, file_name) 
 
         if not os.path.exists(results_path):
             ori = []

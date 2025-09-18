@@ -160,7 +160,7 @@ class ModelManager:
     
     def save_results(self, args):
         # 路径现在由主程序入口的 output_dir 控制
-        results_path = os.path.join(args.output_dir, "results")
+        results_path = args.save_results_path
         if not os.path.exists(results_path):
             os.makedirs(results_path)
 
@@ -223,7 +223,6 @@ if __name__ == '__main__':
     # 使用动态 output_dir (如果命令行未提供，则使用YAML/默认值)
     # 这会覆盖掉 YAML 中的 pretrain_dir 和 save_results_path，实现集中管理
     args.pretrain_dir = os.path.join(args.output_dir, 'models')
-    args.save_results_path = os.path.join(args.output_dir, 'results')
     os.makedirs(args.pretrain_dir, exist_ok=True)
     os.makedirs(args.save_results_path, exist_ok=True)
     

@@ -212,7 +212,7 @@ def cli_simple_openset(entry:str) -> CliBuilder:
     return _f
 
 # --- 注册表：方法 -> {task, stages:[{entry, cli_builder}], config, output_base} ---
-METHOD_REGISTRY: Dict[str, Dict[str, Any]] = {
+METHOD_REGISTRY_GCD: Dict[str, Dict[str, Any]] = {
     "tan": {
         "task":"gcd",
         "stages":[{"entry":"code/gcd/baselines/TAN/run.py", "cli_builder": cli_tan}],
@@ -275,15 +275,5 @@ METHOD_REGISTRY: Dict[str, Dict[str, Any]] = {
         ],
         "config":"configs/gcd/plm_gcd.yaml",
         "output_base":"./outputs/gcd/plm_gcd",
-    },
-    # ----------------- openset -----------------
-    "ab":      {"task":"openset","stages":[{"entry":"code/openset/baselines/AB/run.py",   "cli_builder": cli_simple_openset("code/openset/baselines/AB/run.py")}],   "config":"configs/openset/ab.yaml",     "output_base":"./outputs/openset/ab"},
-    "adb":     {"task":"openset","stages":[{"entry":"code/openset/baselines/ADB/run.py",  "cli_builder": cli_simple_openset("code/openset/baselines/ADB/run.py")}],  "config":"configs/openset/adb.yaml",    "output_base":"./outputs/openset/adb"},
-    "clap":    {"task":"openset","stages":[{"entry":"code/openset/baselines/CLAP/run.py", "cli_builder": cli_simple_openset("code/openset/baselines/CLAP/run.py")}], "config":"configs/openset/clap.yaml",   "output_base":"./outputs/openset/clap"},
-    "deepunk": {"task":"openset","stages":[{"entry":"code/openset/baselines/DeepUNK/run.py","cli_builder": cli_simple_openset("code/openset/baselines/DeepUNK/run.py")}], "config":"configs/openset/deepunk.yaml","output_base":"./outputs/openset/deepunk"},
-    "doc":     {"task":"openset","stages":[{"entry":"code/openset/baselines/DOC/run.py",  "cli_builder": cli_simple_openset("code/openset/baselines/DOC/run.py")}],  "config":"configs/openset/doc.yaml",    "output_base":"./outputs/openset/doc"},
-    "dyen":    {"task":"openset","stages":[{"entry":"code/openset/baselines/Dyen/run.py", "cli_builder": cli_simple_openset("code/openset/baselines/Dyen/run.py")}], "config":"configs/openset/dyen.yaml",   "output_base":"./outputs/openset/dyen"},
-    "knncon":  {"task":"openset","stages":[{"entry":"code/openset/baselines/KNNCon/run.py","cli_builder": cli_simple_openset("code/openset/baselines/KNNCon/run.py")}], "config":"configs/openset/knncon.yaml", "output_base":"./outputs/openset/knncon"},
-    "plm_ood": {"task":"openset","stages":[{"entry":"code/openset/plm_ood/run.py",        "cli_builder": cli_simple_openset("code/openset/plm_ood/run.py")}],        "config":"configs/openset/plm_ood.yaml","output_base":"./outputs/openset/plm_ood"},
-    "scl":     {"task":"openset","stages":[{"entry":"code/openset/baselines/SCL/run.py",  "cli_builder": cli_simple_openset("code/openset/baselines/SCL/run.py")}],  "config":"configs/openset/scl.yaml",    "output_base":"./outputs/openset/scl"},
+    }
 }
