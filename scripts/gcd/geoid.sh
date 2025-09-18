@@ -32,7 +32,7 @@ do
         echo "========================================================================"
 
         # --- 3. 执行区 (直接调用) ---
-        python code/gcd/baselines/GeoID/geoid.py \
+        python code/gcd/baselines/GeoID/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \

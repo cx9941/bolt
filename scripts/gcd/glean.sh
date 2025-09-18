@@ -36,7 +36,7 @@ do
         MODEL_DIR=./outputs/gcd/glean/model_${dataset}_${known_cls_ratio}_${labeled_ratio}_fold${fold_idx}_seed${seed}
 
         # --- 3. 执行区 (直接调用) ---
-        python code/gcd/baselines/Glean/GCDLLMs.py \
+        python code/gcd/baselines/Glean/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \

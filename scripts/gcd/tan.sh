@@ -30,7 +30,7 @@ do
         echo "Running TAN with: dataset=$dataset, known_cls_ratio=$known_cls_ratio, seed=$seed"
         echo "========================================================================"
 
-        python code/gcd/baselines/TAN/TAN.py \
+        python code/gcd/baselines/TAN/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \

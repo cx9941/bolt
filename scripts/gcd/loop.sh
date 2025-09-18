@@ -34,7 +34,7 @@ do
         SAVE_MODEL_DIR="outputs/gcd/loop/models/${dataset}_${known_cls_ratio}_${labeled_ratio}_fold${fold_idx}_seed${seed}"
         # --- 3. 执行区 (直接调用) ---
         # 移除了 parse_yaml.py，直接向 loop.py 传递参数
-        python code/gcd/baselines/LOOP/loop.py \
+        python code/gcd/baselines/LOOP/run.py \
             --config $CONFIG_FILE \
             --dataset $dataset \
             --known_cls_ratio $known_cls_ratio \
