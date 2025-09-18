@@ -13,14 +13,16 @@ parser.add_argument("--config", type=str, default=None, help="Path to the YAML c
 # --- 保留并检查所有原有参数 ---
 parser.add_argument("--dataset_name", default="banking", type=str)
 parser.add_argument("--data_dir", default="./data", type=str) # 修正默认路径
-parser.add_argument("--rate", default=0.25, type=float)
-parser.add_argument("--n_epochs", default=20, type=int)
+parser.add_argument("--known_cls_ratio", default=0.25, type=float)
+parser.add_argument("--num_pretrain_epochs", default=20, type=int)
+parser.add_argument("--num_train_epochs", default=20, type=int)
 parser.add_argument("--seed", default=0, type=int)
 parser.add_argument("--gpu_id", default='0', type=str)
 # device 不再需要，可以由 gpu_id 生成
 # parser.add_argument("--device", default="cuda:0", type=str)
 parser.add_argument("--root", default="data", type=str) # 这个参数似乎没用到，但暂时保留
 parser.add_argument("--output_dir", default="outputs", type=str)
+parser.add_argument("--save_results_path", default="results", type=str)
 parser.add_argument("--backbone", default="Meta-Llama-3.1-8B-Instruct", type=str)
 parser.add_argument("--lr", default=0.001, type=float)
 parser.add_argument("--train_batch_size", default=32, type=int)
@@ -73,15 +75,18 @@ args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 使用统一的 output_dir 生成所有子路径
 args.model_path = f"./pretrained_models/{args.backbone}"
+
+args.output_dir = f"{args.output_dir}/gcd/plm_gcd/{args.dataset_name}_{args.known_cls_ratio}_{args.seed}_{args.backbone}"
 args.checkpoint_path = os.path.join(args.output_dir, 'checkpoints')
 args.log_dir = os.path.join(args.output_dir, 'logs')
 args.case_path = os.path.join(args.output_dir, 'case_study')
-args.metric_dir = os.path.join(args.output_dir, 'metrics')
+args.metric_dir = args.save_results_path
 
 # 创建目录
 os.makedirs(args.metric_dir, exist_ok=True)
 os.makedirs(args.log_dir, exist_ok=True)
 os.makedirs(args.case_path, exist_ok=True)
+os.makedirs(args.checkpoint_path) # checkpoint 目录也需要创建
 os.makedirs(args.checkpoint_path, exist_ok=True) # checkpoint 目录也需要创建
 
 # metric_file 路径也应使用新的根目录

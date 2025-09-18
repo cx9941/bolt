@@ -425,6 +425,11 @@ class Manager:
         # results['run_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
+        desired_order = [
+            'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
+            'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+        ]
+        results = {i:results[i] for i in desired_order}
 
         results_path = os.path.join(args.save_results_path, 'results.csv')
         record = pd.DataFrame([results])

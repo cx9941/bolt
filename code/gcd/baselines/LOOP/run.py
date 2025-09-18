@@ -287,7 +287,13 @@ class LoopModelManager:
         # 2. 合并配置和结果 (self.test_results 已经包含了新的6个指标)
         full_results = {**config_to_save, **self.test_results}
         full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
-        
+
+        desired_order = [
+            'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
+            'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+        ]
+        full_results = {i:full_results[i] for i in desired_order}
+
         # 3. 定义结果文件路径
         save_path = args.save_results_path
         if not os.path.exists(save_path):

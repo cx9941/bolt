@@ -111,7 +111,7 @@ def parse_arguments():
     parser.add_argument("--uncertainty_neighbour_num", type=int, default=None, help="Number of neighbors for uncertainty refinement.")
     parser.add_argument("--rho", type=float, default=None, help="Parameter for similarity score calculation in uncertainty refinement.")
 
-    parser.add_argument("--result_dir", default='./results', type=str, 
+    parser.add_argument("--save_results_path", default='./results', type=str, 
                     help="The metric directory where results and models will be written.")
     
     # 日志相关 (可以保留)

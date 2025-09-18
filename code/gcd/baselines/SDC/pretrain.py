@@ -17,7 +17,7 @@ from scipy.optimize import linear_sum_assignment
 from sklearn import mixture
 from transformers import logging, WEIGHTS_NAME
 from init_parameter import init_model
-from pretrain import PretrainModelManager
+from pretrainmodelmanager import PretrainModelManager
 from model import BertForOT, BertForModel
 import seaborn as sn
 import sys

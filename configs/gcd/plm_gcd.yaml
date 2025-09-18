@@ -33,3 +33,4 @@ metric_for_best: accuracy   # 早停和保存最佳模型的指标
 # --- 输出目录设置 ---
 # 统一的顶层输出目录
 output_dir: "./outputs/gcd/plm_gcd"
+save_results_path: "results/gcd/plm_gcd"

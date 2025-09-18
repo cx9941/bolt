@@ -89,6 +89,7 @@ def main():
     with ThreadPoolExecutor(max_workers=max(1, max_workers)) as ex:
         for idx, (m, d, kr, lr, fi, sd, cf) in enumerate(combos):
             gpu_id = gpu_cycle[idx % len(gpu_cycle)] if gpu_cycle else None
+            print(f"[INFO] 运行: 数据集: {d}，方法: {m} | 已知类比例 {kr} 已知有标签数据比例 {lr} 五折id {fi} 种子 {sd} 聚类比例 {cf}")
             futs.append(ex.submit(
                 run_combo,
                 method=m, dataset=d, known=kr, labeled=lr,

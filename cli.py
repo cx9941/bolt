@@ -21,7 +21,7 @@ def _epoch_flags(args_json:Dict[str,Any], is_pretrain: bool) -> List[str]:
     """根据阶段返回统一的 epoch 参数"""
     return ["--num_pretrain_epochs", str(args_json["num_pretrain_epochs"]), "--num_train_epochs", str(args_json["num_train_epochs"])]
     if is_pretrain:
-        return ["--num_pretrain_epochs", str(args_json["num_pretrain_epochs"])]
+        return ["--num_pretrain_epochs", str(args_json["num_pretrain_epochs"]), "--num_train_epochs", str(args_json["num_train_epochs"])]
     else:
         return ["--num_train_epochs", str(args_json["num_train_epochs"])]
     
@@ -97,6 +97,7 @@ def cli_dpn(args_json:Dict[str,Any], stage:int) -> List[str]:
         "--labeled_ratio", str(args_json["labeled_ratio"]),
         "--fold_idx", str(args_json["fold_idx"]),
         "--gpu_id", str(args_json["gpu_id"]),
+        *_epoch_flags(args_json, is_pretrain=True),   # ★ 新增
         "--freeze_bert_parameters",
         "--save_model",
         "--pretrain",
@@ -173,7 +174,18 @@ def cli_sdc_run(args_json:Dict[str,Any], stage:int) -> List[str]:
         "--save_model",
     ]
 
-def cli_plm_gcd(args_json:Dict[str,Any], stage:int) -> List[str]:
+
+def cli_plm_pre(args_json:Dict[str,Any], stage:int) -> List[str]:
+    return [
+        sys.executable, "code/gcd/plm_gcd/pretrain.py",
+        *_common_env(args_json),
+        "--labeled_ratio", str(args_json["labeled_ratio"]),
+        "--fold_idx", str(args_json["fold_idx"]),
+        "--gpu_id", str(args_json["gpu_id"]),
+        *_epoch_flags(args_json, is_pretrain=False),       # ★ 新增
+    ]
+
+def cli_plm_run(args_json:Dict[str,Any], stage:int) -> List[str]:
     return [
         sys.executable, "code/gcd/plm_gcd/run.py",
         *_common_env(args_json),
@@ -182,6 +194,7 @@ def cli_plm_gcd(args_json:Dict[str,Any], stage:int) -> List[str]:
         "--gpu_id", str(args_json["gpu_id"]),
         *_epoch_flags(args_json, is_pretrain=False),       # ★ 新增
     ]
+
 
 def cli_simple_openset(entry:str) -> CliBuilder:
     def _f(args_json:Dict[str,Any], stage:int) -> List[str]:
@@ -256,7 +269,10 @@ METHOD_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
     "plm_gcd": {
         "task":"gcd",
-        "stages":[{"entry":"code/gcd/plm_gcd/run.py", "cli_builder": cli_plm_gcd}],
+        "stages":[
+            {"entry":"code/gcd/plm_gcd/pretrain.py", "cli_builder": cli_plm_pre},
+            {"entry":"code/gcd/plm_gcd/run.py",      "cli_builder": cli_plm_run},
+        ],
         "config":"configs/gcd/plm_gcd.yaml",
         "output_base":"./outputs/gcd/plm_gcd",
     },

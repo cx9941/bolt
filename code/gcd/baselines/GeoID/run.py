@@ -466,9 +466,17 @@ class CLNNModelManager:
         vars_dict = {k:v for k,v in zip(names, var)}
         results = dict(self.test_results,**vars_dict)
         results['args'] = json.dumps(vars(args), ensure_ascii=False)
-        keys = list(results.keys())
-        values = list(results.values())
-        
+        results['cluster_num_factor'] = args.cluster_num_factor
+        # keys = list(results.keys())
+        # values = list(results.values())
+
+        desired_order = [
+            'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
+            'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+        ]
+        keys = desired_order
+        values = [results[i] for i in desired_order]
+
         file_name = 'results.csv'
         results_path = os.path.join(args.save_results_path, file_name)
         

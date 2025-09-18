@@ -9,7 +9,7 @@ def init_model():
 
     parser.add_argument("--cluster_num_factor", default=1.0, type=float, help="The factor (magnification) of the number of clusters K.")
 
-    parser.add_argument("--data_dir", default='../../data', type=str,
+    parser.add_argument("--data_dir", default='data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
 
     parser.add_argument("--save_results_path", type=str, default='outputs', help="The path to save results.")
@@ -17,10 +17,10 @@ def init_model():
     parser.add_argument("--pretrain_dir", default='baseline_models', type=str, help="The output directory where the model predictions and checkpoints will be written.")
     parser.add_argument("--train_dir", default='sdc_models', type=str, help="The output directory where the model predictions and checkpoints will be written.")
 
-    parser.add_argument("--bert_model", default="../../pretrained_models/bert-base-uncased", type=str,
+    parser.add_argument("--bert_model", default="pretrained_models/bert-base-uncased", type=str,
                         help="The path or name for the pre-trained bert model.")
 
-    parser.add_argument("--tokenizer", default="../../pretrained_models/bert-base-uncased", type=str,
+    parser.add_argument("--tokenizer", default="pretrained_models/bert-base-uncased", type=str,
                         help="The path or name for the tokenizer")
 
     parser.add_argument("--max_seq_length", default=None, type=int,
@@ -89,7 +89,5 @@ def init_model():
                         help="Minimum absolute improvement to reset patience for main training.")
     parser.add_argument("--es_metric", default="eval_acc", type=str,
                         help="Early stopping metric for main training: eval_acc | train_loss")
-    parser.add_argument("--result_dir", default='./results', type=str, 
-                    help="The metric directory where results and models will be written.")
     
     return parser

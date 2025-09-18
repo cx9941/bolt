@@ -47,7 +47,7 @@ def ensure_summary_header():
         with SUMMARY_CSV.open("w", newline="") as f:
             csv.writer(f).writerow([
                 "method","dataset","known_cls_ratio","labeled_ratio",
-                "cluster_num_factor","seed","K","Epoch",
+                "cluster_num_factor","seed","K",
                 "ACC","H-Score","K-ACC","N-ACC","ARI","NMI","args"
             ])
 
@@ -105,7 +105,7 @@ def collect_latest_result(default_outputs_glob:str, args_json:Dict[str,Any]) -> 
                 if not rows:
                     continue
                 row = rows[-1]
-                for k in ["method","dataset","known_cls_ratio","labeled_ratio","cluster_num_factor","seed","K","Epoch",
+                for k in ["method","dataset","known_cls_ratio","labeled_ratio","cluster_num_factor","seed","K",
                           "ACC","H-Score","K-ACC","N-ACC","ARI","NMI","args"]:
                     row.setdefault(k, args_json.get(k, "" if k!="args" else json.dumps(args_json, ensure_ascii=False)))
                 if not row.get("args"):
@@ -138,7 +138,6 @@ def write_summary(row:dict, dedup_key:dict, key_hash:str):
             f2(row.get("cluster_num_factor","")),
             i2(row.get("seed","")),
             i2(row.get("K","")),
-            i2(row.get("Epoch","")),
             f2(row.get("ACC","")),
             f2(row.get("H-Score","")),
             f2(row.get("K-ACC","")),
@@ -174,7 +173,7 @@ def make_base_args(task:str, method:str, dataset:str, known:float, labeled:float
         "cluster_num_factor": float(c_factor),
         "result_dir": f"{out_base}/{subname}",
         "results_file_name": "results.csv",
-        "K": 0, "Epoch": 0,
+        "K": 0,
         # ★ 新增：写入到 args，便于结果重现/去重（忽略 gpu_id 仍然成立）
         "num_pretrain_epochs": int(num_pretrain_epochs),
         "num_train_epochs": int(num_train_epochs),
@@ -236,7 +235,7 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
 
     # 只收集
     if only_collect:
-        row = collect_latest_result(f"./outputs/{task}/{method}/**/results.csv", args_json)
+        row = collect_latest_result(f"./results/{task}/{method}/results.csv", args_json)
         if row:
             write_summary(row, dedup_key, key_hash)
         else:
@@ -287,7 +286,7 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
         lf.write(f"# END COMBO {time.strftime('%F %T')}\n\n")
 
     # 收集与汇总
-    row = collect_latest_result(f"./outputs/{task}/{method}/**/results.csv", args_json)
+    row = collect_latest_result(f"./results/{task}/{method}/results.csv", args_json)
     if not row:
         print(f"[WARN] Finished but no results found for {method} {dataset}")
         return None

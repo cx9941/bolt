@@ -187,16 +187,16 @@ def save_results(args, test_results):
     full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
     # 3. 沿用 ALUP 更灵活的、从 args 读取路径的定义方式
-    if not os.path.exists(args.result_dir):
-        os.makedirs(args.result_dir)
-    results_path = os.path.join(args.result_dir, args.results_file_name)
+    if not os.path.exists(args.save_results_path):
+        os.makedirs(args.save_results_path)
+    results_path = os.path.join(args.save_results_path, args.results_file_name)
     
     # vvvvvvvv 核心修改在这里 vvvvvvvv
 
     # 4. 定义我们期望的最终列顺序，与 LOOP 项目完全对齐
     desired_order = [
         'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
-        'seed', 'K', 'Epoch', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+        'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
     ]
     
     # 5. 使用 Pandas 写入 CSV
@@ -234,8 +234,8 @@ def save_results_pter(args, test_results):
     del test_results['y_pred']
     del test_results['y_true']
 
-    if not os.path.exists(args.result_dir):
-        os.makedirs(args.result_dir)
+    if not os.path.exists(args.save_results_path):
+        os.makedirs(args.save_results_path)
 
     var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.cluster_num_factor, args.seed]
     names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 'seed']
@@ -245,7 +245,7 @@ def save_results_pter(args, test_results):
     keys = list(results.keys())
     values = list(results.values())
     
-    results_path = os.path.join(args.result_dir, args.results_file_name)
+    results_path = os.path.join(args.save_results_path, args.results_file_name)
     
     if not os.path.exists(results_path) or os.path.getsize(results_path) == 0:
         ori = []

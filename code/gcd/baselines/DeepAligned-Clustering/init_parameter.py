@@ -64,6 +64,4 @@ def init_model():
     
     parser.add_argument("--fold_num", default=5, type=int, help="Total number of folds for cross-validation.")
     parser.add_argument("--fold_idx", default=0, type=int, help="The index of the current fold.")
-    parser.add_argument("--result_dir", default='./results', type=str, 
-                    help="The metric directory where results and models will be written.")
     return parser

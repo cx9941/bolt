@@ -592,23 +592,21 @@ class ModelManager:
     def save_results(self, args, result_source=None):
         if not os.path.exists(args.save_results_path):
             os.makedirs(args.save_results_path)
-        var = [args.evaluation_epoch, args.dataset, args.running_method, args.architecture, args.known_cls_ratio, args.label_setting, args.labeled_shot, args.labeled_ratio, result_source, args.seed, args.topk, args.view_strategy, args.num_train_epochs, args.ce_weight, args.cl_weight, args.sup_weight, args.weight_ce_unsup, args.options, args.query_samples, args.update_per_epoch,
-               args.sampling_strategy, args.allocation_degree, 
-               args.weight_cluster_instance_cl, args.options_cluster_instance_ratio,
-               args.prompt_ablation, args.component_ablation, args.llm,
-               args.feedback_cache, self.num_cached_feedback,
-               args.flag_demo, args.known_demo_num_per_class, args.flag_filtering, args.flag_demo_c, args.known_demo_num_per_class_c, args.flag_filtering_c, args.filter_threshold, args.filter_threshold_c]
-        names = ['evaluation_epoch', 'dataset', 'running_method', 'architecture', 'known_cls_ratio', 'label_setting', 'labeled_shot', 'labeled_ratio', 'result_source', 'seed', 'topk', 'view_strategy', 'num_train_epochs', 'ce_weight', 'cl_weight', 'sup_weight', 'weight_ce_unsup', 'options', 'query_samples', 'update_per_epoch',
-                 'sampling_strategy', 'allocation_degree',
-                 'weight_cluster_instance_cl', 'options_cluster_instance_ratio', 
-                 'prompt_ablation', 'component_ablation', 'llm',
-                 'feedback_cache', 'num_cached_feedback',
-                 'flag_demo', 'known_demo_num_per_class', 'flag_filtering', 'flag_demo_c', 'known_demo_num_per_class_c', 'flag_filtering_c', 'filter_threshold', 'filter_threshold_c']
+        var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio, args.seed]
+        names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'seed']
         vars_dict = {k:v for k,v in zip(names, var)}
         results = dict(self.test_results,**vars_dict)
         results['args'] = json.dumps(vars(args), ensure_ascii=False)
-        keys = list(results.keys())
-        values = list(results.values())
+        results['cluster_num_factor'] = args.cluster_num_factor
+        # keys = list(results.keys())
+        # values = list(results.values())
+
+        desired_order = [
+            'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
+            'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+        ]
+        keys = desired_order
+        values = [results[i] for i in desired_order]
         
         file_name = 'results.csv'
         results_path = os.path.join(args.save_results_path, file_name)

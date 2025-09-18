@@ -7,19 +7,35 @@ import torch
 import torch.nn.functional as F
 import json
 
+var = [args.dataset, args.method, args.known_cls_ratio, args.labeled_ratio,  args.seed]
+names = ['dataset', 'method', 'known_cls_ratio', 'labeled_ratio', 'seed']
+vars_dict = {k:v for k,v in zip(names, var)}
+results = dict(self.test_results,**vars_dict)
+results['args'] = json.dumps(vars(args), ensure_ascii=False)
+results['cluster_num_factor'] = args.cluster_num_factor
+# keys = list(results.keys())
+# values = list(results.values())
+
+
+
 def save_results(method_name, args, results, num_labels):
     config_to_save = {
-        'method': method_name,
         'dataset': args.dataset,
+        'method': method_name,
         'known_cls_ratio': args.known_cls_ratio,
         'labeled_ratio': args.labeled_ratio,
         'cluster_num_factor': args.cluster_num_factor,
         'seed': args.seed,
-        'K': num_labels
     }
 
     full_results = {**config_to_save, **results}
     full_results['args'] = json.dumps(vars(args), ensure_ascii=False)
+
+    desired_order = [
+        'method', 'dataset', 'known_cls_ratio', 'labeled_ratio', 'cluster_num_factor', 
+        'seed', 'ACC', 'H-Score', 'K-ACC', 'N-ACC', 'ARI', 'NMI', 'args'
+    ]
+    full_results = {i:full_results[i] for i in desired_order}
 
     save_path = args.save_results_path
     if not os.path.exists(save_path):
