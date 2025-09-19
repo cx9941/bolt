@@ -79,6 +79,9 @@ dataset_specific_configs:
   DBPedia:
     max_seq_length: 256
     gamma: 30
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
     num_train_epochs: 30
   medical:
     max_seq_length: 256
@@ -102,6 +105,9 @@ dataset_specific_configs:
     max_seq_length: 512
     gamma: 90
     num_train_epochs: 10
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   X-Topic:
     max_seq_length: 512
     gamma: 90

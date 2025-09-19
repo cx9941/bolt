@@ -63,6 +63,9 @@ dataset_specific_configs:
     max_seq_length: 200
   DBPedia:
     max_seq_length: 256
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   medical:
     max_seq_length: 256
 
@@ -73,5 +76,8 @@ dataset_specific_configs:
     max_seq_length: 500
   20NG: # 20 Newsgroups
     max_seq_length: 512
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   X-Topic:
     max_seq_length: 512

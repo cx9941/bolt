@@ -125,6 +125,9 @@ dataset_specific_configs:
     max_seq_length: 256
     topk: 200
     task: "topic"
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   medical:
     max_seq_length: 256
     topk: 200
@@ -145,6 +148,9 @@ dataset_specific_configs:
     max_seq_length: 512
     topk: 500
     task: "topic"
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   X-Topic:
     max_seq_length: 512
     topk: 500

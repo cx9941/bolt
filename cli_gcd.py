@@ -10,7 +10,9 @@ from typing import Any, Dict, List, Callable
 CliBuilder = Callable[[Dict[str,Any], int], List[str]]  # args_json, stage_idx -> CLI list
 
 def _common_env(args_json:Dict[str,Any]) -> List[str]:
+    bert_model = "./pretrained_models/bert-base-chinese" if args_json["dataset"] in ['ecdt', 'thucnews'] else "./pretrained_models/bert-base-uncased"
     return [
+        "--bert_model", bert_model,
         "--config", str(args_json["config"]),
         "--dataset", args_json["dataset"],
         "--known_cls_ratio", str(args_json["known_cls_ratio"]),

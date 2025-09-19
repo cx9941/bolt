@@ -37,7 +37,7 @@ es_min_delta: 0.0
 method: "CLNN" 
 cluster_num_factor: 1.0
 cluster_temperature: 1.0
-feat_dim: 128
+feat_dim: 512
 rtr_prob: 0.25
 lambda_v: 3.0
 temp: 0.07
@@ -70,6 +70,9 @@ dataset_specific_configs:
     max_seq_length: 200
   DBPedia:
     max_seq_length: 256
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   medical:
     max_seq_length: 256
 
@@ -80,5 +83,8 @@ dataset_specific_configs:
     max_seq_length: 500
   20NG: # 20 Newsgroups
     max_seq_length: 512
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
   X-Topic:
     max_seq_length: 512

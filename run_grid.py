@@ -20,7 +20,7 @@ from utils import (
 
 def main():
     ap = argparse.ArgumentParser(description="Run grid experiments (YAML-only).")
-    ap.add_argument("--config", type=str, default="configs/grid.yaml", help="YAML config path")
+    ap.add_argument("--config", type=str, default="configs/grid_gcd.yaml", help="YAML config path")
     args = ap.parse_args()
 
     cfg_path = Path(args.config)
@@ -95,13 +95,13 @@ def main():
 
     # 组合与并行（保持你原来的 combos 生成逻辑）
     combos = []
-    for m in final_methods:
-        for d in datasets:
-            for kr in knowns:
+    for cf in cfs:
+        for sd in seeds:
+            for fi in fold_idxs:
                 for lr in labeleds:
-                    for fi in fold_idxs:
-                        for sd in seeds:
-                            for cf in cfs:
+                    for kr in knowns:
+                        for d in datasets:
+                            for m in final_methods:
                                 combos.append((m, d, kr, lr, fi, sd, cf))
 
     print(f"[INFO] 组合数={len(combos)} | methods={final_methods} | datasets={datasets}")

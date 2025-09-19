@@ -16,6 +16,7 @@ fold_num: 5
 # --- 模型设置 ---
 # 将 backbone 从 shell 移入配置
 backbone: "Meta-Llama-3.1-8B-Instruct"
+bert_model: "./pretrained_models/bert-base-uncased"
 # 提供预训练模型的根目录，具体路径由代码生成
 model_path_root: "./pretrained_models"
 
@@ -34,3 +35,15 @@ metric_for_best: accuracy   # 早停和保存最佳模型的指标
 # 统一的顶层输出目录
 output_dir: "./outputs/gcd/plm_gcd"
 save_results_path: "results/gcd/plm_gcd"
+
+
+# --- 数据集专属配置 ---
+dataset_specific_configs:
+  DBPedia:
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16
+  20NG:
+    train_batch_size: 16
+    eval_batch_size: 32
+    pretrain_batch_size: 16

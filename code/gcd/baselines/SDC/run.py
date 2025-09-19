@@ -501,47 +501,40 @@ if __name__ == '__main__':
     args.model_file_dir = args.pretrain_dir
     args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
 
-    if os.path.exists(f'{args.save_results_path}/results.csv'):
-        df_results = pd.read_csv(f'{args.save_results_path}/results.csv')
-        sub_df = df_results[(df_results['dataset']==args.dataset) & ('train' in df_results['ablation']) & (df_results['known_cls_ratio']==args.known_cls_ratio) & (df_results['labeled_ratio']==args.labeled_ratio) & (df_results['cluster_num_factor']==args.cluster_num_factor)  & (df_results['seed']==args.seed)]
+
+
+    if args.pretrain and (not os.path.exists(args.model_file)):
+        print(f'No ckpts {args.model_file}')
+        print('Pre-training begin...')
+        manager_p = PretrainModelManager(args, data)
+        manager_p.train(args, data)
+        print('Pre-training finished!')
+        print(f'Save to {args.model_file}')
+        manager_p.load_model(args)
+
+        manager_p = PretrainModelManager(args, data)
+        manager_p.load_model(args)
+        manager = Manager(args, data, manager_p.model)
+        manager.evaluation(data, tag='pretrain')
+        del manager_p
+    
     else:
-        sub_df = pd.DataFrame([])
+        manager_p = PretrainModelManager(args, data)
+        manager_p.load_model(args)
+        manager = Manager(args, data, manager_p.model)
 
-    if len(sub_df) > 0:
-        print("Pre-trained and Evaluated")
+    args.model_file_dir = args.train_dir
+    args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
+    # manager.train(args,data)
+    
+    if not os.path.exists(args.model_file):
+        print('Training begin...')
+        manager.train(args,data)
+        print('Training finished!')
     else:
-        if args.pretrain and (not os.path.exists(args.model_file)):
-            print(f'No ckpts {args.model_file}')
-            print('Pre-training begin...')
-            manager_p = PretrainModelManager(args, data)
-            manager_p.train(args, data)
-            print('Pre-training finished!')
-            print(f'Save to {args.model_file}')
-            manager_p.load_model(args)
+        print(args.model_file, "has been trained.", )
+        manager.load_model(args)
 
-            manager_p = PretrainModelManager(args, data)
-            manager_p.load_model(args)
-            manager = Manager(args, data, manager_p.model)
-            manager.evaluation(data, tag='pretrain')
-            del manager_p
-        
-        else:
-            manager_p = PretrainModelManager(args, data)
-            manager_p.load_model(args)
-            manager = Manager(args, data, manager_p.model)
-
-        args.model_file_dir = args.train_dir
-        args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
-        # manager.train(args,data)
-        
-        if not os.path.exists(args.model_file):
-            print('Training begin...')
-            manager.train(args,data)
-            print('Training finished!')
-        else:
-            print(args.model_file, "has been trained.", )
-            manager.load_model(args)
-
-        print('Evaluation begin...')
-        manager.evaluation(data, tag='train')
-        print('Evaluation finished!')
+    print('Evaluation begin...')
+    manager.evaluation(data, tag='train')
+    print('Evaluation finished!')

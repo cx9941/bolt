@@ -432,25 +432,15 @@ if __name__ == '__main__':
     args.model_file_dir = args.pretrain_dir
     args.model_file = os.path.join(args.model_file_dir, 'premodel.pth')
 
-    if os.path.exists(f'{args.save_results_path}/results.csv'):
-        df_results = pd.read_csv(f'{args.save_results_path}/results.csv')
-        sub_df = df_results[(df_results['dataset']==args.dataset) & ('baseline' in df_results['ablation']) & (df_results['known_cls_ratio']==args.known_cls_ratio) & (df_results['labeled_ratio']==args.labeled_ratio) & (df_results['cluster_num_factor']==args.cluster_num_factor)  & (df_results['seed']==args.seed)]
-    else:
-        sub_df = pd.DataFrame([])
-
-    if len(sub_df) > 0:
-        print("Trained and Evaluated")
-    else:
-
-        if args.pretrain and (not os.path.exists(args.model_file)):
-            print('Pre-training begin...')
-            manager_p = PretrainModelManager(args, data)
-            manager_p.train(args, data)
-            print('Pre-training finished!')
-            del manager_p
-
+    if args.pretrain and (not os.path.exists(args.model_file)):
+        print('Pre-training begin...')
         manager_p = PretrainModelManager(args, data)
-        manager_p.load_model(args)
-        manager = Manager(args, data, manager_p.model)
-        
-        # manager.evaluation(data, tag='baseline')
+        manager_p.train(args, data)
+        print('Pre-training finished!')
+        del manager_p
+
+    manager_p = PretrainModelManager(args, data)
+    manager_p.load_model(args)
+    manager = Manager(args, data, manager_p.model)
+    
+    # manager.evaluation(data, tag='baseline')

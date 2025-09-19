@@ -24,6 +24,7 @@ parser.add_argument("--root", default="data", type=str) # 这个参数似乎没�
 parser.add_argument("--output_dir", default="outputs", type=str)
 parser.add_argument("--save_results_path", default="results", type=str)
 parser.add_argument("--backbone", default="Meta-Llama-3.1-8B-Instruct", type=str)
+parser.add_argument("--bert_model", default="./pretrained_models/bert-base-uncased", type=str)
 parser.add_argument("--lr", default=0.001, type=float)
 parser.add_argument("--train_batch_size", default=32, type=int)
 parser.add_argument("--eval_batch_size", default=128, type=int)
