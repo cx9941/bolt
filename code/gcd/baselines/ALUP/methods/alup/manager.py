@@ -17,14 +17,22 @@ from losses.contrastive_loss import SupConLoss
 from utils import view_generator, save_results, clustering_score, save_model
 from .model import Bert
 from .utils_data import MemoryBank, fill_memory_bank, NIDData, NeighborsDataset
+def pick_device(requested_id: int | None):
+    if not torch.cuda.is_available():
+        return torch.device("cpu")
 
+    n = torch.cuda.device_count()
+    # 若只暴露1张卡或越界，回退到0
+    gid = 0 if (requested_id is None or requested_id < 0 or requested_id >= n) else requested_id
+    torch.cuda.set_device(gid)
+    return torch.device(f"cuda:{gid}")
 
 class Manager:
 
     def __init__(self, args, data, pretrained_model=None, logger_name='Discovery'):
         
         self.logger = logging.getLogger(logger_name)
-        self.device = torch.device('cuda:%d' % int(args.gpu_id) if torch.cuda.is_available() else 'cpu')   
+        self.device = pick_device(getattr(args, "gpu_id", None))
         self.logger.info(self.device)
 
         self.num_labels = data.num_labels

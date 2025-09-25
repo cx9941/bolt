@@ -4,6 +4,10 @@ https://github.com/thuiar/DeepAligned-Clustering/blob/main/dataloader.py
 """
 
 from utils.tools import *
+import csv
+import sys
+csv.field_size_limit(sys.maxsize)
+
 
 # max_seq_lengths = {'mcid':21, 'clinc':30, 'stackoverflow':45, 'banking':55,"hwu":55}
 class Data:

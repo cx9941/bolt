@@ -8,7 +8,7 @@ import json
 import os
 import re
 import copy
-
+import pandas as pd
 from torch.optim import AdamW
 from tqdm import tqdm, trange
 from torch.utils.data import DataLoader, SequentialSampler
@@ -18,14 +18,22 @@ from sklearn.metrics.pairwise import euclidean_distances
 from scipy.stats import t
 from scipy.optimize import linear_sum_assignment
 from transformers import get_linear_schedule_with_warmup
-
+from .build_prompt import build_examples_from_train_df, build_intent_matching_prompt
 from methods.alup.model import Bert
 from methods.alup.utils_data import NIDData, NIDDataset, MemoryBank, fill_memory_bank, NeighborsDataset
 from methods.alup.utils_prompt import PROMPT_BANKING, PROMPT_CLINC, PROMPT_STACKOVERFLOW, PROMPT_MCID, PROMPT_HWU, PROMPT_ECDT
 from methods.alup.utils_LLM import chat_completion_with_backoff, OPENAI_PIRCE
 from losses.contrastive_loss import SupConLoss
 from utils import clustering_score, view_generator, save_results, clustering_accuracy_score
+def pick_device(requested_id: int | None):
+    if not torch.cuda.is_available():
+        return torch.device("cpu")
 
+    n = torch.cuda.device_count()
+    # 若只暴露1张卡或越界，回退到0
+    gid = 0 if (requested_id is None or requested_id < 0 or requested_id >= n) else requested_id
+    torch.cuda.set_device(gid)
+    return torch.device(f"cuda:{gid}")
 
 class ALManager:
 
@@ -37,7 +45,8 @@ class ALManager:
         self.data = data 
         
         self.logger = logging.getLogger(logger_name)
-        self.device = torch.device('cuda:%d' % int(args.gpu_id) if torch.cuda.is_available() else 'cpu')   
+        # self.device = torch.device('cuda:%d' % int(args.gpu_id) if torch.cuda.is_available() else 'cpu')   
+        self.device = pick_device(getattr(args, "gpu_id", None))
         self.logger.info(self.device)
 
         self.num_labels = data.num_labels
@@ -61,6 +70,9 @@ class ALManager:
         self.optimizer, self.scheduler = self.get_optimizer(args, args.lr, num_train_steps)
 
         self.generator = view_generator(self.tokenizer, args.rtr_prob, args.seed)
+
+        self.train_df = pd.DataFrame([(i.text_a, i.label) for i in self.train_labeled_examples]).rename(columns={0: "utterance", 1: "cluster_id"})
+        self.train_df['cluster_id'] = self.train_df.groupby('cluster_id').ngroup()
 
 
     def get_optimizer(self, args, lr, num_steps):
@@ -431,6 +443,8 @@ class ALManager:
                 # print('**** max_uncertain_utterance_text: ', max_uncertain_utterance_text)
                     
                 
+
+                                
                 if args.dataset == 'banking':
                     comparison_prompting = PROMPT_BANKING.format(utterance_set, max_uncertain_utterance_text)
                 elif args.dataset == 'clinc':
@@ -444,7 +458,13 @@ class ALManager:
                 elif args.dataset == 'ecdt':
                     comparison_prompting = PROMPT_ECDT.format(utterance_set, max_uncertain_utterance_text)
                 else:
-                    raise NotImplementedError('Dataset not implemented')                
+                    examples = build_examples_from_train_df(self.train_df, seed=123, set_size_each=30)
+
+                    comparison_prompting = build_intent_matching_prompt(
+                        examples_text=examples,
+                        utterance_set_text=utterance_set,
+                        max_uncertain_utterance_text=max_uncertain_utterance_text
+                    )               
                 
                 true_cluster_id = y_true[ex_ori_ind]
                 pred_cluster_id = y_pred_map[ex_ori_ind]

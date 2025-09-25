@@ -14,19 +14,30 @@ from .model import PretrainBert
 from utils import mask_tokens, accuracy_score, clustering_score
 from .utils_data import NIDData
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+import os
+def pick_device(requested_id: int | None):
+    if not torch.cuda.is_available():
+        return torch.device("cpu")
+
+    n = torch.cuda.device_count()
+    # 若只暴露1张卡或越界，回退到0
+    gid = 0 if (requested_id is None or requested_id < 0 or requested_id >= n) else requested_id
+    torch.cuda.set_device(gid)
+    return torch.device(f"cuda:{gid}")
 
 class PretrainManager:
 
     def __init__(self, args, data, logger_name='Discovery'):
 
         self.logger = logging.getLogger(logger_name)
-        self.device = torch.device('cuda:%d' % int(args.gpu_id) if torch.cuda.is_available() else 'cpu')   
+        self.device = pick_device(getattr(args, "gpu_id", None))
 
         args.known_num_labels = data.n_known_cls
         args.num_labels = data.num_labels
         self.logger.info('Number of known classes during pretrain: %s', str(args.known_num_labels))
         
         self.model = PretrainBert(args)
+        
         self.model.to(self.device)
         self.tokenizer = self.model.tokenizer
 
