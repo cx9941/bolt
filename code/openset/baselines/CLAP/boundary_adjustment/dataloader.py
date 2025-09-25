@@ -113,7 +113,7 @@ class Data:
         return examples
 
     def get_loader(self, examples, args, mode='train', aug_examples=None):
-        tokenizer = BertTokenizer.from_pretrained(args.pretrain_dir, do_lower_case=True)
+        tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
         features = convert_examples_to_features(examples, self.label_list, args.max_seq_length, tokenizer)
         input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
         input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)

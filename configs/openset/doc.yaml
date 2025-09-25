@@ -20,3 +20,4 @@ train_batch_size: 128          # 对应原脚本的 batch_size 参数
 # --- 输出目录设置 ---
 # 将原脚本中硬编码的 ckpt/ 和 metrics/ 路径统一管理
 output_dir: "./outputs/openset/doc"
+save_results_path: "results/openset/doc"

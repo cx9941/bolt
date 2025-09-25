@@ -28,3 +28,4 @@ save_model: True
 
 # --- 输出目录设置 ---
 output_dir: "./outputs/openset/adb" 
+save_results_path: "results/openset/adb"

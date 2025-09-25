@@ -16,6 +16,7 @@ from init_parameter import init_model
 import yaml
 import sys
 import json
+import os, shutil
 
 class ModelManager:
     def __init__(self, args, data, pretrained_model):
@@ -134,16 +135,34 @@ class ModelManager:
         final_results['N-F1'] = self.test_results.get('F1-score_unseen', 0.0)
         final_results['args'] = json.dumps(vars(args), ensure_ascii=False)
 
-        metric_dir = os.path.join(args.output_dir, 'metrics')
-        os.makedirs(metric_dir, exist_ok=True)
-        results_path = os.path.join(metric_dir, 'results.csv')
+        os.makedirs(args.save_results_path, exist_ok=True)
+        results_path = os.path.join(args.save_results_path, 'results.csv')
 
         if not os.path.exists(results_path):
             df_to_save = pd.DataFrame([final_results])
+
+            df_to_save['method'] = 'clap'
+            cols = ['method','dataset','known_cls_ratio','labeled_ratio','cluster_num_factor','seed','ACC','F1','K-F1','N-F1','args']
+            for col in cols:
+                if col in df_to_save:
+                    continue
+                df_to_save[col] = getattr(args, col)
+            df_to_save = df_to_save[cols]
+
             df_to_save.to_csv(results_path, index=False)
         else:
             existing_df = pd.read_csv(results_path)
             new_row_df = pd.DataFrame([final_results])
+
+
+            new_row_df['method'] = 'clap'
+            cols = ['method','dataset','known_cls_ratio','labeled_ratio','cluster_num_factor','seed','ACC','F1','K-F1','N-F1','args']
+            for col in cols:
+                if col in new_row_df:
+                    continue
+                new_row_df[col] = getattr(args, col)
+            new_row_df = new_row_df[cols]
+
             updated_df = pd.concat([existing_df, new_row_df], ignore_index=True)
             updated_df.to_csv(results_path, index=False)
             
@@ -158,9 +177,7 @@ def main(args):
     # 加载数据
     data = Data(args)
 
-    # 加载第一阶段 finetune 好的模型
-    print("Loading finetuned model...")
-    pretrained_model = BertForModel.from_pretrained(args.pretrain_dir, num_labels=data.num_labels, cosine=args.cosine)
+    pretrained_model = BertForModel.from_pretrained(args.pretrain_dir + '/finetuned_model', num_labels=data.num_labels, cosine=args.cosine)
 
     # 初始化模型管理器
     manager = ModelManager(args, data, pretrained_model)

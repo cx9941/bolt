@@ -160,7 +160,7 @@ class ModelManager:
     
     def save_results(self, args):
         # 路径现在由主程序入口的 output_dir 控制
-        results_path = args.save_results_path
+        results_path =  args.output_dir
         if not os.path.exists(results_path):
             os.makedirs(results_path)
 
@@ -173,7 +173,8 @@ class ModelManager:
         np.save(os.path.join(results_path, 'centroids.npy'), self.centroids.detach().cpu().numpy())
         np.save(os.path.join(results_path, 'deltas.npy'), self.delta.detach().cpu().numpy())
         
-        results_csv_path = os.path.join(results_path, 'results.csv')
+        results_csv_path = os.path.join(args.save_results_path, 'results.csv')
+        os.makedirs(os.path.dirname(results_csv_path), exist_ok=True)
         df_new_row = pd.DataFrame([results])
 
         if not os.path.exists(results_csv_path):

@@ -35,6 +35,7 @@ def init_model():
                         help="The name of the dataset to train selected")
     
     parser.add_argument("--known_cls_ratio", default=0.75, type=float, help="The number of known classes")
+    parser.add_argument("--cluster_num_factor", default=1.0, type=float, help="The number of known classes")
     
     parser.add_argument("--labeled_ratio", default=1.0, type=float, help="The ratio of labeled samples in the training set")
 

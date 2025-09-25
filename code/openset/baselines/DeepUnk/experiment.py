@@ -126,11 +126,20 @@ def main(args):
     final_results['K-F1'] = sum(known_f1_scores) / len(known_f1_scores) if known_f1_scores else 0.0
     final_results['N-F1'] = report['unseen']['f1-score'] if 'unseen' in report else 0.0
 
-    metric_dir = os.path.join(args.output_dir, 'metrics')
+    metric_dir = args.save_result
     os.makedirs(metric_dir, exist_ok=True)
     results_path = os.path.join(metric_dir, 'results.csv')
 
     df_to_save = pd.DataFrame([final_results])
+
+    df_to_save['method'] = 'deepunk'
+    cols = ['method','dataset','known_cls_ratio','labeled_ratio','cluster_num_factor','seed','ACC','F1','K-F1','N-F1','args']
+    for col in cols:
+        if col in df_to_save:
+            continue
+        df_to_save[col] = getattr(args, col)
+    df_to_save = df_to_save[cols]
+
     if not os.path.exists(results_path):
         df_to_save.to_csv(results_path, index=False)
     else:
@@ -148,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, default=None, help="Path to the YAML config file.")
     parser.add_argument("--dataset", type=str, default="banking")
     parser.add_argument("--known_cls_ratio", type=float, default=0.25)
+    parser.add_argument("--cluster_num_factor", type=float, default=1.0)
     parser.add_argument("--n_epochs", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--gpu_id", type=str, default="0")

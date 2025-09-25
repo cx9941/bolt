@@ -13,6 +13,9 @@ labeled_ratio: 0.1
 fold_idx: 0
 fold_num: 5
 max_seq_length: 128
+bert_model: "./pretrained_models/bert-base-uncased"
+save_results_path: "results/openset/clap"
+cluster_num_factor: 1.0
 
 # --- 输出目录设置 (两阶段通用) ---
 # 这是一个顶层目录，具体的子目录由脚本自动生成

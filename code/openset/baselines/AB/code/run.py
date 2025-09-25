@@ -81,11 +81,20 @@ def main(args):
     
     # 7. 将结果追加保存到主 results.csv 文件
     # 使用统一的 output_dir
-    metric_dir = os.path.join(args.save_results_path, 'metrics')
+
+    metric_dir = args.save_results_path
     os.makedirs(metric_dir, exist_ok=True)
     results_path = os.path.join(metric_dir, 'results.csv')
 
     df_to_save = pd.DataFrame([final_results])
+    df_to_save['method'] = 'ab'
+    cols = ['method','dataset','known_cls_ratio','labeled_ratio','cluster_num_factor','seed','ACC','F1','K-F1','N-F1','args']
+    for col in cols:
+        if col in df_to_save:
+            continue
+        df_to_save[col] = getattr(args, col)
+    df_to_save = df_to_save[cols]
+
     if not os.path.exists(results_path):
         df_to_save.to_csv(results_path, index=False)
     else:
@@ -108,13 +117,14 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, default='./data')
     parser.add_argument('--known_cls_ratio', type=float, default=0.25)
     parser.add_argument('--labeled_ratio', type=float, default=1.0)
+    parser.add_argument('--cluster_num_factor', type=float, default=1.0)
     parser.add_argument('--fold_idx', type=int, default=0)
+    parser.add_argument('--num_train_epochs', type=int, default=50)
     parser.add_argument('--fold_num', type=int, default=5)
     parser.add_argument('--emb_name', type=str, choices=["sbert", "use_dan", "use_tran"], default='sbert')
     parser.add_argument('--alpha', type=float, default=0.35)
     parser.add_argument('--output_dir', type=str, default='./outputs/openset/ab')
-    parser.add_argument("--save_results_path", default='./results', type=str, 
-                    help="The metric directory where results and models will be written.")
+    parser.add_argument("--save_results_path", default='./results', type=str, help="The metric directory where results and models will be written.")
     
     args = parser.parse_args()
     

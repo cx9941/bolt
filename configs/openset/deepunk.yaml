@@ -24,3 +24,4 @@ train_batch_size: 16   # 对应原脚本的 batch_size
 
 # --- 输出目录设置 ---
 output_dir: "./outputs/openset/deepunk"
+save_results_path: "results/openset/deepunk"

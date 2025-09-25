@@ -43,8 +43,6 @@ if __name__ == '__main__':
         'labeled_ratio': args.labeled_ratio,
         'cluster_num_factor': 1,
         'seed': args.seed,
-        "K": args.num_labels,
-        "Epoch": args.num_pretrain_epochs,
         "ACC": metrics.get('ACC', 0),
         "H-Score": metrics.get('H-Score', 0),
         "K-ACC": metrics.get('K-ACC', 0),

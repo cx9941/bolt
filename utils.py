@@ -18,12 +18,12 @@ SUMMARY_CSV: Path = None
 SEEN_JSON: Path = None
 LOG_DIR: Path = None
 
-def set_paths(results_dir: str, logs_dir: str):
+def set_paths(results_dir: str, logs_dir: str, result_file: str):
     """由 YAML 指定的路径进行初始化"""
     global RESULTS_DIR, SUMMARY_CSV, SEEN_JSON, LOG_DIR
     RESULTS_DIR = Path(results_dir); RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    SUMMARY_CSV = RESULTS_DIR / "summary.csv"
-    SEEN_JSON = RESULTS_DIR / "seen_index.json"
+    SUMMARY_CSV = RESULTS_DIR / f"summary_{result_file}.csv" 
+    SEEN_JSON = RESULTS_DIR / f"seen_index_{result_file}.json"
     LOG_DIR = Path(logs_dir); LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 def json_sha1(obj: Any) -> str:
@@ -105,8 +105,10 @@ def collect_latest_result(default_outputs_glob:str, args_json:Dict[str,Any]) -> 
                 if not rows:
                     continue
                 row = rows[-1]
-                for k in ["method","dataset","known_cls_ratio","labeled_ratio","cluster_num_factor","seed","K",
-                          "ACC","H-Score","K-ACC","N-ACC","ARI","NMI","args"]:
+                col_list = ["method","dataset","known_cls_ratio","labeled_ratio","cluster_num_factor","seed","K",
+                          "ACC","F1","K-F1","N-F1","args"] if args_json['task'] == 'openset' else ["method","dataset","known_cls_ratio","labeled_ratio","cluster_num_factor","seed","K",
+                          "ACC","H-Score","K-ACC","N-ACC","ARI","NMI","args"]
+                for k in col_list:
                     row.setdefault(k, args_json.get(k, "" if k!="args" else json.dumps(args_json, ensure_ascii=False)))
                 if not row.get("args"):
                     row["args"] = json.dumps(args_json, ensure_ascii=False)
@@ -130,22 +132,25 @@ def collect_latest_result(default_outputs_glob:str, args_json:Dict[str,Any]) -> 
 def write_summary(row:dict, dedup_key:dict, key_hash:str):
     ensure_summary_header()
     with SUMMARY_CSV.open("a", newline="") as f:
-        csv.writer(f).writerow([
-            row.get("method",""),
-            row.get("dataset",""),
-            f2(row.get("known_cls_ratio","")),
-            f2(row.get("labeled_ratio","")),
-            f2(row.get("cluster_num_factor","")),
-            i2(row.get("seed","")),
-            i2(row.get("K","")),
-            f2(row.get("ACC","")),
-            f2(row.get("H-Score","")),
-            f2(row.get("K-ACC","")),
-            f2(row.get("N-ACC","")),
-            f2(row.get("ARI","")),
-            f2(row.get("NMI","")),
-            row.get("args",""),
-        ])
+        content = [v if i in ['method', 'dataset', 'args'] else f2(v) for i,v in row.items()]
+        csv.writer(f).writerow(content)
+
+        # csv.writer(f).writerow([
+        #     row.get("method",""),
+        #     row.get("dataset",""),
+        #     f2(row.get("known_cls_ratio","")),
+        #     f2(row.get("labeled_ratio","")),
+        #     f2(row.get("cluster_num_factor","")),
+        #     i2(row.get("seed","")),
+        #     i2(row.get("K","")),
+        #     f2(row.get("ACC","")),
+        #     f2(row.get("H-Score","")),
+        #     f2(row.get("K-ACC","")),
+        #     f2(row.get("N-ACC","")),
+        #     f2(row.get("ARI","")),
+        #     f2(row.get("NMI","")),
+        #     row.get("args",""),
+        # ])
     seen = load_seen(); seen[key_hash] = dedup_key; save_seen(seen)
     print(f"[OK] Appended to {SUMMARY_CSV}")
 

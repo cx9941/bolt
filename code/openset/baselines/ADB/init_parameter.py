@@ -19,7 +19,7 @@ def init_model():
     # --- 修正默认路径 ---
     parser.add_argument("--data_dir", default='./data', type=str,
                         help="The input data dir. Should contain the .csv files (or other data files) for the task.")
-    parser.add_argument("--save_results_path", type=str, default='./outputs/adb/results', help="the path to save results")
+    parser.add_argument("--save_results_path", type=str, default='./results', help="the path to save results")
     # parser.add_argument("--pretrain_dir", default='./outputs/adb/models', type=str, 
     #                     help="The output directory where the model predictions and checkpoints will be written.") 
     parser.add_argument("--bert_model", default="./pretrained_models/bert-base-uncased", type=str, help="The path for the pre-trained bert model.")
@@ -56,5 +56,5 @@ def init_model():
 
     parser.add_argument("--fold_idx", default=0, type=int)
     parser.add_argument("--fold_num", default=5, type=int)
-    
+
     return parser

@@ -39,6 +39,7 @@ def main():
         grid = y["grid"]                     # 网格参数字典
         run = y["run"]                       # 运行参数（gpus, max_workers, dry_run, only_collect）
         paths = y["paths"]                   # 路径（results_dir, logs_dir）
+        result_file = y["result_file"]                   # 路径（results_dir, logs_dir）
     except KeyError as e:
         print(f"[ERR] YAML 缺少必要字段：{e}")
         sys.exit(1)
@@ -59,7 +60,7 @@ def main():
     only_collect = bool(run.get("only_collect", False))
 
     # 设置结果/日志路径（由 YAML 指定）
-    set_paths(paths["results_dir"], paths["logs_dir"])
+    set_paths(paths["results_dir"], paths["logs_dir"], result_file)
 
     # 过滤：只保留在 maps 出现过的方法
     method2task = {m: t for t, ms in maps.items() for m in ms}
