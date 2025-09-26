@@ -52,7 +52,7 @@ def init_model():
     parser.add_argument('--seed', type=int, default=0,
                         help="Random seed.")
 
-    parser.add_argument("--method", type=str, default='CLNN',
+    parser.add_argument("--method", type=str, default='LOOP',
                         help="The name of method.")
 
     parser.add_argument("--labeled_ratio", default=0.1, type=float,

@@ -37,8 +37,8 @@ if __name__ == '__main__':
     # 新增：把关键实验参数单列写入；所有参数放到 args(JSON) 列
     record = dict(metrics)
     record = {
-        "method": "PLM_GCD-" + args.backbone,
-        'dataset': args.dataset_name,
+        "method": "PLM_GCD",
+        'dataset': args.dataset,
         'known_cls_ratio': args.known_cls_ratio,
         'labeled_ratio': args.labeled_ratio,
         'cluster_num_factor': 1,

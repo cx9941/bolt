@@ -4,27 +4,27 @@ from torch.utils.data import DataLoader
 from configs import args
 from datasets import concatenate_datasets
 
-known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.known_cls_ratio}.list', header=None)[0].tolist()
-all_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/label/label.list', header=None)[0].tolist()
+known_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset}/label/fold{args.fold_num}/part{args.fold_idx}/label_known_{args.known_cls_ratio}.list', header=None)[0].tolist()
+all_label_list = pd.read_csv(f'{args.data_dir}/{args.dataset}/label/label.list', header=None)[0].tolist()
 all_label_list = known_label_list + [i for i in all_label_list if i not in known_label_list]
 ## origin data
-origin_train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/train.tsv', sep='\t')
-origin_eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/dev.tsv', sep='\t')
-origin_test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
+origin_train_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/origin_data/train.tsv', sep='\t')
+origin_eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/origin_data/dev.tsv', sep='\t')
+origin_test_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/origin_data/test.tsv', sep='\t')
 
 
 ## id train data
-train_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
+train_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/labeled_data/{args.labeled_ratio}/train.tsv', sep='\t')
 train_data['text'] =  origin_train_data['text']
 train_data = train_data[(train_data['label'].isin(known_label_list)) & (train_data['labeled'])].drop('labeled',  axis=1)
 
 ## id eval data
-eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/labeled_data/{args.labeled_ratio}/dev.tsv', sep='\t')
+eval_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/labeled_data/{args.labeled_ratio}/dev.tsv', sep='\t')
 eval_data['text'] =  origin_eval_data['text']
 data_in_eval = eval_data[(eval_data['label'].isin(known_label_list)) & (eval_data['labeled'])].drop('labeled',  axis=1)
 
 ## all test data
-test_data = pd.read_csv(f'{args.data_dir}/{args.dataset_name}/origin_data/test.tsv', sep='\t')
+test_data = pd.read_csv(f'{args.data_dir}/{args.dataset}/origin_data/test.tsv', sep='\t')
 data_in_test = test_data[test_data['label'].isin(known_label_list)]
 data_out_test = test_data[~test_data['label'].isin(known_label_list)]
 # data_out_test['label'] = 'ood'

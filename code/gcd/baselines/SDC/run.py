@@ -22,7 +22,7 @@ class Manager:
 
     def __init__(self, args, data, pretrained_model):
         set_seed(args.seed)
-        args.method  = 'bias'
+        args.method  = 'SDC'
          
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

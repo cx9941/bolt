@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 # --- 新增我们框架所需的参数 ---
 parser.add_argument("--config", type=str, default=None, help="Path to the YAML config file.")
 # --- 保留并检查所有原有参数 ---
-parser.add_argument("--dataset_name", default="banking", type=str)
+parser.add_argument("--dataset", default="banking", type=str)
 parser.add_argument("--data_dir", default="./data", type=str) # 修正默认路径
 parser.add_argument("--known_cls_ratio", default=0.25, type=float)
 parser.add_argument("--num_pretrain_epochs", default=20, type=int)
@@ -67,7 +67,7 @@ if args.config:
         yaml_config = yaml.safe_load(f)
     apply_config_updates(args, yaml_config, parser)
     if 'dataset_specific_configs' in yaml_config:
-        dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset_name, {})
+        dataset_configs = yaml_config['dataset_specific_configs'].get(args.dataset, {})
         apply_config_updates(args, dataset_configs, parser)
 
 # 4. 基于最终的 args，完成所有依赖于参数的设置 (路径生成、环境设置等)
@@ -77,7 +77,7 @@ args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 使用统一的 output_dir 生成所有子路径
 args.model_path = f"./pretrained_models/{args.backbone}"
 
-args.output_dir = f"{args.output_dir}/gcd/plm_gcd/{args.dataset_name}_{args.known_cls_ratio}_{args.seed}_{args.backbone}"
+args.output_dir = f"{args.output_dir}/gcd/plm_gcd/{args.dataset}_{args.known_cls_ratio}_{args.seed}_{args.backbone}"
 args.checkpoint_path = os.path.join(args.output_dir, 'checkpoints')
 args.log_dir = os.path.join(args.output_dir, 'logs')
 args.case_path = os.path.join(args.output_dir, 'case_study')
