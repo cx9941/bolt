@@ -49,7 +49,7 @@ extra_args:
 # 按方法分别追加/覆盖 extra_args（可选）
 per_method_extra:
   alup:
-    num_train_epochs: 1
+    num_train_epochs: 50
     pretrain_batch_size: 16
     train_batch_size: 32
   dpn:
