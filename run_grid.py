@@ -114,7 +114,6 @@ def main():
         while True:
             gpu_id = gpu_pool.get()  # 阻塞，直到有空闲 GPU
             try:
-                print(f"[RUN ] {d} | {m} | kr={kr} lr={lr} fold={fi} seed={sd} cf={cf} | gpu={gpu_id}")
                 return run_combo(
                     method=m, dataset=d, known=kr, labeled=lr,
                     fold_idx=fi, seed=sd, c_factor=cf,

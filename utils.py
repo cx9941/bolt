@@ -11,12 +11,39 @@ import time
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional, List
+import yaml
 
 # 这些全局路径由 set_paths() 在主程序中设置
 RESULTS_DIR: Path = None
 SUMMARY_CSV: Path = None
 SEEN_JSON: Path = None
 LOG_DIR: Path = None
+
+def compare_common_keys(dict1: dict, dict2: dict) -> bool:
+    """
+    比较两个字典在共有 key 上的 value 是否一致。
+    - 对 int/float 支持跨类型比较（会尝试强制转换）。
+    - 如果无法转换则返回 False。
+    """
+    common_keys = set(dict1.keys()) & set(dict2.keys())
+    for key in common_keys:
+        v1, v2 = dict1[key], dict2[key]
+
+        # 如果其中一个是数字类型，尝试把另一个转成 float 比较
+        if isinstance(v1, (int, float)) or isinstance(v2, (int, float)):
+            try:
+                if float(v1) != float(v2):
+                    # print(f"不同值: key={key}, dict1={v1}, dict2={v2}")
+                    return False
+            except (ValueError, TypeError):
+                # print(f"无法转换: key={key}, dict1={v1}, dict2={v2}")
+                return False
+        else:
+            # 普通比较
+            if v1 != v2:
+                # print(f"不同值: key={key}, dict1={v1}, dict2={v2}")
+                return False
+    return True
 
 def set_paths(results_dir: str, logs_dir: str, result_file: str):
     """由 YAML 指定的路径进行初始化"""
@@ -129,7 +156,7 @@ def collect_latest_result(default_outputs_glob:str, args_json:Dict[str,Any]) -> 
             continue
     return None
 
-def write_summary(row:dict, dedup_key:dict, key_hash:str):
+def write_summary(row:dict):
     ensure_summary_header()
     with SUMMARY_CSV.open("a", newline="") as f:
         content = [v if i in ['method', 'dataset', 'args'] else f2(v) for i,v in row.items()]
@@ -151,7 +178,7 @@ def write_summary(row:dict, dedup_key:dict, key_hash:str):
         #     f2(row.get("NMI","")),
         #     row.get("args",""),
         # ])
-    seen = load_seen(); seen[key_hash] = dedup_key; save_seen(seen)
+    # seen = load_seen(); seen[key_hash] = dedup_key; save_seen(seen)
     print(f"[OK] Appended to {SUMMARY_CSV}")
 
 def make_base_args(task:str, method:str, dataset:str, known:float, labeled:float,
@@ -223,34 +250,56 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
         num_pretrain_epochs=num_pretrain_epochs,
         num_train_epochs=num_train_epochs,
     )
-    # 去重键（忽略 gpu_id）
-    dedup_key = {
-        "method": args_json["method"], "dataset": dataset,
-        "known_cls_ratio": known, "labeled_ratio": labeled,
-        "cluster_num_factor": c_factor, "fold_idx": fold_idx, "seed": seed,
-        "_args_wo_gpu": {k:v for k,v in args_json.items() if k!="gpu_id"},
-    }
-    key_hash = json_sha1(dedup_key)
+    
+    import pandas as pd
+    save_result_file = f"results/{args_json['task']}/{method}/results.csv"
+    save_result_df = pd.read_csv(save_result_file)
+    save_result_df['args'] = save_result_df['args'].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
+
+    ### 识别去重机制
+    with open(args_json['config'], "r", encoding="utf-8") as f:
+        configs = yaml.safe_load(f)
+    dataset_name = args_json["dataset"]
+    ds_cfg = {}
+    if "dataset_specific_configs" in configs:
+        ds_cfg = configs["dataset_specific_configs"].get(dataset_name, {})
+    base_cfg = {k: v for k, v in configs.items() if k != "dataset_specific_configs"}
+    run_args = {**base_cfg, **ds_cfg, **args_json}
+
+    for items in save_result_df['args']:
+        if compare_common_keys(run_args, items):
+            print(f"[SKIP] seen matched: {method} {dataset} kr={known} lr={labeled} fold={fold_idx} seed={seed}")
+            return None
+
+    print(f"[RUN ] {dataset} | {method} | kr={known} lr={labeled} fold={fold_idx} seed={seed} cf={c_factor} | gpu={gpu_id}")
 
     # seen 索引
-    seen = load_seen()
-    if key_hash in seen and not only_collect:
-        print(f"[SKIP] seen matched: {method} {dataset} kr={known} lr={labeled} fold={fold_idx} seed={seed}")
-        return None
+    # # 去重键（忽略 gpu_id）
+    # dedup_key = {
+    #     "method": args_json["method"], "dataset": dataset,
+    #     "known_cls_ratio": known, "labeled_ratio": labeled,
+    #     "cluster_num_factor": c_factor, "fold_idx": fold_idx, "seed": seed,
+    #     "_args_wo_gpu": {k:v for k,v in args_json.items() if k!="gpu_id"},
+    # }
+    # key_hash = json_sha1(dedup_key)
+    # seen = load_seen()
+    # if key_hash in seen and not only_collect:
+    #     print(f"[SKIP] seen matched: {method} {dataset} kr={known} lr={labeled} fold={fold_idx} seed={seed}")
+    #     return None
 
-    # bucket 去重
-    if already_done_via_bucket(task, dataset, known, labeled, args_json) and not only_collect:
-        print(f"[SKIP] bucket matched: {method} {dataset} kr={known} lr={labeled} fold={fold_idx} seed={seed}")
-        return None
+    # # bucket 去重
+    # if already_done_via_bucket(task, dataset, known, labeled, args_json) and not only_collect:
+    #     print(f"[SKIP] bucket matched: {method} {dataset} kr={known} lr={labeled} fold={fold_idx} seed={seed}")
+    #     return None
 
-    # 只收集
-    if only_collect:
-        row = collect_latest_result(f"./results/{task}/{method}/results.csv", args_json)
-        if row:
-            write_summary(row, dedup_key, key_hash)
-        else:
-            print(f"[WARN] No results for {method} {dataset} (collect mode)")
-        return row
+    # # 只收集
+    # if only_collect:
+    #     row = collect_latest_result(f"./results/{task}/{method}/results.csv", args_json)
+    #     if row:
+    #         write_summary(row, dedup_key, key_hash)
+    #     else:
+    #         print(f"[WARN] No results for {method} {dataset} (collect mode)")
+    #     return row
 
     # # 执行阶段
     # log_file = LOG_DIR / f"{task}_{method}_{dataset}_{known}_{labeled}_c{c_factor}_fold{fold_idx}_seed{seed}_{int(time.time())}.log"
@@ -284,6 +333,9 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
         cli_builder = st["cli_builder"]
         cli = cli_builder(args_json, idx)
         stage_log = log_dir / f"stage{idx}.log"
+
+        print(f"[stage_log ] {stage_log}")
+
         ret = run_stage(cli, args_json, gpu_id, dry_run, stage_log)
         # 也把阶段结果尾巴拼进 all.log 方便一处查看
         with all_log.open("a", encoding="utf-8") as lf:
@@ -295,10 +347,10 @@ def run_combo(method:str, dataset:str, known:float, labeled:float, fold_idx:int,
     with all_log.open("a", encoding="utf-8") as lf:
         lf.write(f"# END COMBO {time.strftime('%F %T')}\n\n")
 
-    # 收集与汇总
+    # # 收集与汇总
     row = collect_latest_result(f"./results/{task}/{method}/results.csv", args_json)
     if not row:
         print(f"[WARN] Finished but no results found for {method} {dataset}")
         return None
-    write_summary(row, dedup_key, key_hash)
+    write_summary(row)
     return row
